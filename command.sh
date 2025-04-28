@@ -56,32 +56,24 @@ function sfsv() {
   fi 
 } 
 
-function sfsn() { 
 
-echo "I AM BROKEN" 
-  local search_term="$1" 
-  local search_path="${2:-.}" 
-  local counter=1 
-  local files=() 
-  find "$search_path" \( -type f -o -type d \) -name "*$search_term*" 2>/dev/null | while read file; do 
-    echo "$counter. $file" 
-    files+=("$file") 
-    ((counter++)) 
-  done 
-
-  read -p "Enter number to open in vim: " choice 
-
-   if [[ "$choice" =~ ^[0-9]+$ ]]; then 
-    if ((choice <= ${#files[@]} + 1 )); then 
-      vim "${files[$((choice - 1))]}" 
-    else 
-      echo "Invalid choice" 
-    fi 
-  else 
-    echo "Invalid input" 
-  fi 
-} 
 alias gasoline="rm -rf *" 
 alias ets="et; pp" 
 alias etgs='et;gs' 
 
+
+function inject() {
+local bashrc_file="$HOME/.bashrc"
+ local bashfile_path="$(realpath "$0")"
+local source_command="source $bashfile_path"
+
+# Check if the source command is already in .bashrc
+if ! grep -Fxq "$source_command" "$bashrc_file"; then
+ echo "$source_command" >> "$bashrc_file"
+ echo "Added $bashfile_path to $bashrc_file"
+refrsh
+else
+ echo "$bashfile_path is already sourced in $bashrc_file"
+fi
+}
+inject
