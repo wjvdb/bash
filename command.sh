@@ -73,47 +73,8 @@ function sfsv() {
     done 
   fi 
 } 
-function sfse_old(){
-  local search_term="$1" 
-  local search_path="${2:-.}" 
-  local results=($(find "$search_path" -type f -name "*$search_term*" 2>/dev/null)) 
-  if [[ ${#results[@]} -eq 1 ]]; then 
-    explorer.exe "${results[0]}" 
-  else 
-    for result in "${results[@]}"; do 
-      echo "$result" 
-    done 
-  fi 
-}
 
-function sfse(){
-  local search_term="$1" 
-  local search_path="${2:-.}" 
 
-  # Check if search_term and search_path are provided
-  if [[ -z "$search_term" || -z "$search_path" ]]; then
-    echo "Usage: sfse <search_term> [search_path]"
-    return 1
-  fi
-
-  local results=($(find "$search_path" -type f -name "*$search_term*" 2>/dev/null)) 
-
-  if [[ ${#results[@]} -eq 0 ]]; then 
-    echo "No files found."
-  elif [[ ${#results[@]} -eq 1 ]]; then 
-    # Try to open the file in a graphical viewer if possible
-    if command -v explorer &> /dev/null; then
-      explorer.exe "${results[0]}" 
-    else
-      echo "File found: ${results[0]}"
-      # If no explorer, you can use other methods like cat for text files or open for GUI-based editors
-    fi
-  else 
-    for result in "${results[@]}"; do 
-      echo "$result" 
-    done 
-  fi 
-}
 
 
 function hjelp() {
@@ -142,43 +103,6 @@ if ! grep -Fxq "$source_command" "$bashrc_file"; then
 fi
 }
 inject
-
-
-
-
-function sfsd_primal() {
-  local search_term="$1"
-  local file_extension="$2"
-
-  # Check if search_term is provided
-  if [[ -z "$search_term" ]]; then
-    echo "Usage: gto <partial_file_name> [file_extension]"
-    return 1
-  fi
-
-  local results=($(find . -type f -name "*$search_term*$file_extension" 2>/dev/null))
-
-  if [[ ${#results[@]} -eq 0 ]]; then
-    echo "No files found."
-  elif [[ ${#results[@]} -eq 1 ]]; then
-    cd "$(dirname "${results[0]}")"
-  else
-    for ((i=0; i<${#results[@]}; i++)); do
-      echo "$((i+1)): $(basename "${results[i]}") - $(dirname "${results[i]}")"
-    done
-
-    read -p "Enter the number of the file you want to go to: " choice
-    if [[ $choice =~ ^[0-9]+$ ]] && (( $choice > 0 && $choice <= ${#results[@]} )); then
-      cd "$(dirname "${results[$((choice-1))]}")"
-    else
-      echo "Invalid choice."
-    fi
-  fi
-}
-
-
-
-
 
 function list_files() {
   local search_term="$1"
