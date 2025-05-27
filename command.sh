@@ -145,7 +145,8 @@ inject
 
 
 
-function sfsd() {
+
+function sfsd_primal() {
   local search_term="$1"
   local file_extension="$2"
 
@@ -163,7 +164,7 @@ function sfsd() {
     cd "$(dirname "${results[0]}")"
   else
     for ((i=0; i<${#results[@]}; i++)); do
-      echo "$((i+1)): $(basename "${results[i]}")"
+      echo "$((i+1)): $(basename "${results[i]}") - $(dirname "${results[i]}")"
     done
 
     read -p "Enter the number of the file you want to go to: " choice
@@ -172,5 +173,87 @@ function sfsd() {
     else
       echo "Invalid choice."
     fi
+  fi
+}
+
+
+
+
+
+function list_files() {
+  local search_term="$1"
+  local file_extension="$2"
+
+  # Check if search_term is provided
+  if [[ -z "$search_term" ]]; then
+    echo "Usage: gto <partial_file_name> [file_extension]"
+    return 1
+  fi
+
+  local results=($(find . -type f -name "*$search_term*$file_extension" 2>/dev/null))
+
+  if [[ ${#results[@]} -eq 0 ]]; then
+    echo "No files found."
+  elif [[ ${#results[@]} -eq 1 ]]; then
+    cd "$(dirname "${results[0]}")"
+  else
+    for ((i=0; i<${#results[@]}; i++)); do
+      echo "$((i+1)): $(basename "${results[i]}") - $(dirname "${results[i]}")"
+    done
+
+    read -p "Enter the number of the file you want to go to: " choice
+    if [[ $choice =~ ^[0-9]+$ ]] && (( $choice > 0 && $choice <= ${#results[@]} )); then
+      selected_file="${results[$((choice-1))]}"
+      return 0
+    else
+      echo "Invalid choice."
+      return 1
+    fi
+  fi
+}
+
+
+function open_in_vim() {
+  if [[ -n "$selected_file" ]]; then
+    vim "$selected_file"
+    unset selected_file
+  else
+    echo "No file selected."
+  fi
+}
+
+function open_in_explorer() {
+  local original_dir="$(pwd)"
+  if [[ -n "$selected_file" ]]; then
+    cd "$(dirname "$selected_file")"
+    explorer.exe .
+  fi
+  cd "$original_dir"
+}
+
+function go_to_directory() {
+  if [[ -n "$selected_file" ]]; then
+    cd "$(dirname "$selected_file")"
+  fi
+}
+
+function sfsd() {
+  list_files "$@"
+  if [[ $? -eq 0 ]]; then
+    go_to_directory
+  fi
+}
+
+function sfsv() {
+  list_files "$@"
+  if [[ $? -eq 0 ]]; then
+    open_in_vim
+  fi
+}
+
+function sfse() {
+  list_files "$@"
+  if [[ $? -eq 0 ]]; then
+    open_in_explorer
   fi
 }
