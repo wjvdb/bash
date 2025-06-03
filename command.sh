@@ -113,8 +113,7 @@ function list_files() {
     echo "Usage: gto <partial_file_name> [file_extension]"
     return 1
   fi
-
-  local results=($(find . -type f -name "*$search_term*$file_extension" 2>/dev/null))
+  local results=($(find . -iname "*$search_term*$file_extension" 2>/dev/null))
 
   if [[ ${#results[@]} -eq 0 ]]; then
     echo "No files found."
@@ -179,5 +178,16 @@ function sfse() {
   list_files "$@"
   if [[ $? -eq 0 ]]; then
     open_in_explorer
+  fi
+}
+
+function launch() {
+  list_files "$@"
+
+  if [[ -n "$selected_file" ]]; then
+    echo "Launching $selected_file..."
+    ./"$selected_file"  # Use './' to execute the file in the current directory
+  else
+    echo "No executable found."
   fi
 }
