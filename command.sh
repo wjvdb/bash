@@ -17,6 +17,11 @@ alias gau='git add --all'
 alias ga='git add .' 
 alias gau='git add --all' 
 
+function unfuck() {
+  git fetch origin
+  current_branch=$(git symbolic-ref --short HEAD)
+  git reset --hard origin/$current_branch
+}
 
 
 function pp { 
