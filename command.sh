@@ -196,3 +196,32 @@ function launch() {
     echo "No executable found."
   fi
 }
+
+
+lex() {
+    input_file=$1
+    word=$2
+    output_file=${3:-"${word}.txt"}
+
+    grep -i "$word" "$input_file" > "$output_file"
+}
+
+function Deportation() {
+  local file_extension="$1"
+  local destination_folder="${2:-.}"
+
+  # Find all files with the specified extension and sort them by modification time
+  local files=($(find . -type f -name "*.$file_extension" 2>/dev/null | sort -k1.1,1.1 -k2,2r))
+
+  # Create an associative array to store unique file hashes
+  declare -A file_hashes
+
+  # Loop through the sorted list of files and copy them to the destination folder if they are unique
+  for file in "${files[@]}"; do
+    local file_hash=$(sha256sum "$file" | awk '{print $1}')
+    if [[ -z "${file_hashes[$file_hash]}" ]]; then
+      cp "$file" "$destination_folder"
+      file_hashes[$file_hash]=1
+    fi
+  done
+}
