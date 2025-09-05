@@ -113,24 +113,33 @@ function list_files() {
   local search_term="$1"
   local file_extension="$2"
 
-  # Check if search_term is provided
-  if [[ -z "$search_term" ]]; then
+  # If both search_term and file_extension are empty, show usage
+  if [[ -z "$search_term" && -z "$file_extension" ]]; then
     echo "Usage: gto <partial_file_name> [file_extension]"
     return 1
   fi
-  local results=($(find . -iname "*$search_term*$file_extension" 2>/dev/null))
+
+  # Build the search pattern
+  local pattern="*${search_term}*"
+  if [[ -n "$file_extension" ]]; then
+    pattern="${pattern}${file_extension}"
+  fi
+
+  local results=($(find . -type f -iname "$pattern" 2>/dev/null))
 
   if [[ ${#results[@]} -eq 0 ]]; then
     echo "No files found."
+    return 1
   elif [[ ${#results[@]} -eq 1 ]]; then
-    cd "$(dirname "${results[0]}")"
+    selected_file="${results[0]}"
+    cd "$(dirname "$selected_file")"
+    return 0
   else
     for ((i=0; i<${#results[@]}; i++)); do
       echo "$((i+1)): $(basename "${results[i]}") - $(dirname "${results[i]}")"
     done
-
     read -p "Enter the number of the file you want to go to: " choice
-    if [[ $choice =~ ^[0-9]+$ ]] && (( $choice > 0 && $choice <= ${#results[@]} )); then
+    if [[ $choice =~ ^[0-9]+$ ]] && (( choice > 0 && choice <= ${#results[@]} )); then
       selected_file="${results[$((choice-1))]}"
       return 0
     else
@@ -139,6 +148,7 @@ function list_files() {
     fi
   fi
 }
+
 
 
 function open_in_vim() {
@@ -185,6 +195,40 @@ function sfse() {
     open_in_explorer
   fi
 }
+function sex() {
+  local file_extension="$1"
+
+  if [[ -z "$file_extension" ]]; then
+    echo "Usage: sex <file_extension>"
+    return 1
+  fi
+
+  list_files "" ".$file_extension"
+  if [[ $? -eq 0 ]]; then
+    go_to_directory
+  fi
+}
+
+
+ffc() {
+  target="$1"
+  find . -type d -name "$target" -exec dirname {} \; | sort -u
+}
+
+
+
+function search_in_files() {
+  local search_term="$1"
+  local file_extension="$2"
+
+  list_files "" ".$file_extension"
+  if [[ $? -eq 0 ]]; then
+    for result in "${results[@]}"; do
+      grep -i "$search_term" "$result"
+    done
+  fi
+}
+
 
 function launch() {
   list_files "$@"
