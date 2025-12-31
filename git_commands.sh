@@ -20,3 +20,12 @@ function unfuck() {
     echo "Untracked files deleted."
   fi
 }
+
+function gnb() {
+  if [ -z "$1" ]; then
+    echo "Usage: newbranch <branch-name>"
+    return 1
+  fi
+
+  git checkout -b "$1" && git push -u origin "$1"
+}
