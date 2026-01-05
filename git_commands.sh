@@ -10,6 +10,7 @@ alias derkje='git log --graph --decorate --pretty=oneline --abbrev-commit'
 alias gs='git status' 
 
 function unfuck() {
+  # Reset the current branch to match the remote and optionally delete untracked files
   git fetch origin
   current_branch=$(git symbolic-ref --short HEAD)
   git reset --hard origin/$current_branch
@@ -22,6 +23,7 @@ function unfuck() {
 }
 
 function gnb() {
+  # Create and push a new branch to origin
   if [ -z "$1" ]; then
     echo "Usage: newbranch <branch-name>"
     return 1

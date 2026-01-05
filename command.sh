@@ -2,11 +2,54 @@ alias gasoline="rm -rf *"
 alias ets="et; pp" 
 alias etgs='et;gs' 
 alias refrsh="source ~/.bashrc" 
-alias esc='vim ~/.bashrc' 
-alias exc='esc'
+alias esc_old='vim ~/.bashrc' 
+alias exc_old='esc'
 alias sjow='explorer.exe .'
 alias portal='cd ~' 
+
+
+
+function exc() {
+# Edit sourced files in bashrc
+  local bashrc="${HOME}/.bashrc"
+  local sourced_files=()
+  
+
+  while IFS= read -r line; do
+    if [[ "$line" =~ ^source\ \"(.*)\" ]]; then
+      sourced_files+=("${BASH_REMATCH[1]}")
+    fi
+  done < <(grep -A 100 "# Sourced from setup.sh" "$bashrc")
+  
+  if [[ ${#sourced_files[@]} -eq 0 ]]; then
+    echo "No sourced files found in bashrc."
+    return 1
+  fi
+  
+  echo "Sourced files:"
+  for ((i=0; i<${#sourced_files[@]}; i++)); do
+    echo "$((i+1)): $(basename "${sourced_files[$i]}")"
+  done
+  echo ""
+  
+  read -p "Enter the number of the file to edit: " choice
+  
+  if [[ $choice =~ ^[0-9]+$ ]] && (( choice > 0 && choice <= ${#sourced_files[@]} )); then
+    selected_file="${sourced_files[$((choice-1))]}"
+    
+    if command -v code &> /dev/null; then
+      code "$selected_file"
+    else
+      vim "$selected_file"
+    fi
+  else
+    echo "Invalid choice."
+    return 1
+  fi
+}
+
 function pp { 
+  # Navigate up N directories
   num=${1:-1} 
   while [ $num -ne 0 ]; do 
     cd .. 
@@ -15,6 +58,7 @@ function pp {
 } 
 
 replace_in_files() { 
+# Replace old_word with new_word in files with specified extensions
   if [ $# -ne 2 ]; then 
     echo "Usage: replace_in_files <old_word> <new_word> <file_extensions (optional)>" 
     return 1 
@@ -26,13 +70,13 @@ replace_in_files() {
 }  
 
 ss() { 
-
+  # Search for a word in files within a folder
   if [ $# -lt 1 ]; then 
     echo "Usage: search_folder <word> [folder_path]" 
     return 1 
   fi 
   word="$1" 
-  folder_path="${2:-$PWD}"  # Use current directory (PWD) if no folder_path provided 
+  folder_path="${2:-$PWD}" 
   grep -r -i "$word" "$folder_path" 
 } 
 edir () { 
@@ -43,12 +87,14 @@ edir () {
 
 
 function sfs() { 
+  # Search for files or directories matching the search term
   local search_term="$1" 
   local search_path="${2:-.}"  # Default to current directory if no path is given 
   find "$search_path" -type f -name "*$search_term*" 2>/dev/null || \ 
   find "$search_path" -type d -name "*$search_term*" 2>/dev/null 
 } 
 function sfsv() { 
+  # Search for files matching the search term and open in vim if one result
   local search_term="$1" 
   local search_path="${2:-.}" 
   local results=($(find "$search_path" -type f -name "*$search_term*" 2>/dev/null)) 
@@ -61,21 +107,33 @@ function sfsv() {
   fi 
 } 
 
-
-
-
 function hjelp() {
-  alias_list=$(alias | awk -F'=' '{print $1}')
-  function_list=$(compgen -A function)
+  # Display aliases and functions with descriptions
+  echo "=== ALIASES ==="
+  alias | while read -r line; do
+    alias_name=$(echo "$line" | awk -F"=" '{print $1}')
+    alias_cmd=$(echo "$line" | awk -F"=" '{print $2}' | sed "s/^'//;s/'$//")
+    printf "%-15s %s\n" "$alias_name" "$alias_cmd"
+  done
 
-  echo "Aliases:"
-  echo "$alias_list"
-
-  echo "Functions:"
-  echo "$function_list"
+  echo ""
+  echo "=== FUNCTIONS ==="
+  function_list=$(compgen -A function | grep -v "^_")
+  
+  for func in $function_list; do
+    # Extract the comment from the first line after function declaration
+    local comment=$(sed -n "/^function $func()/,/^}/p" "$BASH_SOURCE" | sed -n '2p' | sed 's/^[[:space:]]*#[[:space:]]*//;s/^[[:space:]]*//')
+    
+    if [[ -z "$comment" ]]; then
+      comment="No description"
+    fi
+    
+    printf "%-15s %s\n" "$func" "$comment"
+  done
 }
 
 function list_files() {
+  # List files matching a partial name and optional extension
   local search_term="$1"
   local file_extension="$2"
 
@@ -118,6 +176,7 @@ function list_files() {
 
 
 function open_in_vim() {
+  # Open the selected file in vim
   if [[ -n "$selected_file" ]]; then
     vim "$selected_file"
     unset selected_file
@@ -127,6 +186,7 @@ function open_in_vim() {
 }
 
 function open_in_explorer() {
+  # Open the directory of the selected file in Windows Explorer
   local original_dir="$(pwd)"
   if [[ -n "$selected_file" ]]; then
     cd "$(dirname "$selected_file")"
@@ -136,12 +196,14 @@ function open_in_explorer() {
 }
 
 function go_to_directory() {
+  # Change to the directory of the selected file
   if [[ -n "$selected_file" ]]; then
     cd "$(dirname "$selected_file")"
   fi
 }
 
 function sfsd() {
+  # Search for files and change to the directory of the selected file
   list_files "$@"
   if [[ $? -eq 0 ]]; then
     go_to_directory
@@ -149,6 +211,7 @@ function sfsd() {
 }
 
 function sfsv() {
+  # Search for files and open in vim
   list_files "$@"
   if [[ $? -eq 0 ]]; then
     open_in_vim
@@ -156,12 +219,14 @@ function sfsv() {
 }
 
 function sfse() {
+  # Search for files and open in explorer
   list_files "$@"
   if [[ $? -eq 0 ]]; then
     open_in_explorer
   fi
 }
 function sex() {
+  # Search for files by extension and change to the directory
   local file_extension="$1"
 
   if [[ -z "$file_extension" ]]; then
@@ -177,6 +242,7 @@ function sex() {
 
 
 ffc() {
+  # Find folders with the specified name
   target="$1"
   find . -type d -name "$target" -exec dirname {} \; | sort -u
 }
@@ -184,6 +250,7 @@ ffc() {
 
 
 function search_in_files() {
+  # Search for a term in files with a specific extension
   local search_term="$1"
   local file_extension="$2"
 
@@ -197,6 +264,7 @@ function search_in_files() {
 
 
 function launch() {
+  # Search for executable files and launch the selected one
   list_files "$@"
 
   if [[ -n "$selected_file" ]]; then
@@ -209,6 +277,7 @@ function launch() {
 
 
 lex() {
+    # Extract lines containing a specific word (case-insensitive) from a file
     input_file=$1
     word=$2
     output_file=${3:-"${word}.txt"}
@@ -217,6 +286,7 @@ lex() {
 }
 
 function Deportation() {
+  # Copy unique files with a specific extension to a destination folder
   local file_extension="$1"
   local destination_folder="${2:-.}"
 

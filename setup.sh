@@ -37,16 +37,33 @@ read -p "Select files to source (comma-separated numbers, or 'all' for all files
 
 # Process selection
 selected_files=()
+exclude_files=()
 if [[ "$selection" == "all" ]]; then
   selected_files=("${filtered_files[@]}")
 else
   IFS=',' read -ra selections <<< "$selection"
   for sel in "${selections[@]}"; do
     sel=$(echo "$sel" | xargs) # trim whitespace
-    if [[ "$sel" =~ ^[0-9]+$ ]] && (( sel >= 1 && sel <= ${#filtered_files[@]} )); then
+    if [[ "$sel" =~ ^!([0-9]+)$ ]]; then
+      # Exclusion mode: !number
+      num=${BASH_REMATCH[1]}
+      if (( num >= 1 && num <= ${#filtered_files[@]} )); then
+        exclude_files+=($((num-1)))
+      fi
+    elif [[ "$sel" =~ ^[0-9]+$ ]] && (( sel >= 1 && sel <= ${#filtered_files[@]} )); then
       selected_files+=("${filtered_files[$((sel-1))]}")
     fi
   done
+  
+  # If exclusions were specified, select all except excluded
+  if [[ ${#exclude_files[@]} -gt 0 ]]; then
+    selected_files=()
+    for i in "${!filtered_files[@]}"; do
+      if [[ ! " ${exclude_files[@]} " =~ " $i " ]]; then
+        selected_files+=("${filtered_files[$i]}")
+      fi
+    done
+  fi
 fi
 
 # Add sourcing commands to bashrc
