@@ -27,6 +27,3 @@ delete_setup_changes() {
     return 1
   fi
 }
-
-# Run the function if script is executed
-delete_setup_changes
