@@ -112,4 +112,46 @@ EOF
   # Execute (use -- to mark pathspec)
   "${base[@]}" "${args[@]}" -- -- "$path"
 }
-``
+
+
+
+## Search commit messages and descriptions for a term# Usage: gsc "<search-term>"
+# Example: gsc "fix bug"
+gsc() {
+    if [ -z "$1" ]; then
+        echo "Usage: gsc <search-term>"
+        return 1
+    fi
+
+    local term="$1"
+
+    # Search commit messages AND descriptions
+    git log --all -E --grep="$term" --pretty=format:"%C(yellow)%h%Creset %Cgreen%ad%Creset %s" --date=short
+}
+
+
+# Show file history with diffs for last N commits
+gfh() {
+    if [ -z "$1" ] || [ -z "$2" ]; then
+        echo 'Usage: gfh "<filename>" <number-of-commits>'
+        return 1
+    fi
+
+    local file="$1"
+    local count="$2"
+
+    # Get commits that touched this file
+    commits=$(git log -n "$count" --pretty=format:"%H" -- "$file")
+
+    if [ -z "$commits" ]; then
+        echo "No commits found for file: $file"
+        return 1
+    fi
+
+    for c in $commits; do
+        echo -e "\n=============================="
+        echo "Commit: $c"
+        echo "------------------------------"
+        git show "$c" -- "$file"
+    done
+}
