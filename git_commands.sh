@@ -115,7 +115,8 @@ EOF
 
 
 
-## Search commit messages and descriptions for a term# Usage: gsc "<search-term>"
+# Search commit messages and descriptions for a term
+# Usage: gsc "<search-term>"
 # Example: gsc "fix bug"
 gsc() {
     if [ -z "$1" ]; then

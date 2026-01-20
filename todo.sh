@@ -8,7 +8,7 @@ todo() {
 
   # Ensure file exists
   [[ -f "$TODO_FILE" ]] || : > "$TODO_FILE"
-
+clear
   # --- helpers ---
   show_list() {
     if [[ ! -s "$TODO_FILE" ]]; then
