@@ -10,7 +10,7 @@ alias portal='cd ~'
 
 
 function exc() {
-  # @desc Edit sourced bash helper files with auto-sync to git
+  # @desc Edit sourced bash helper files with auto-sync to git, or create new files
   local bashrc="${HOME}/.bashrc"
   local sourced_files=()
   local script_dir=""
@@ -26,135 +26,213 @@ function exc() {
     fi
   done < <(grep -A 100 "# Sourced from setup.sh" "$bashrc")
   
-  if [[ ${#sourced_files[@]} -eq 0 ]]; then
-    echo "No sourced files found in bashrc."
-    return 1
+  # If no script directory found, try to determine from git repo
+  if [[ -z "$script_dir" ]]; then
+    # Try to find C:\com\bash or current directory
+    if [[ -d "C:/com/bash/.git" ]]; then
+      script_dir="C:/com/bash"
+    elif [[ -d ".git" ]]; then
+      script_dir="$(pwd)"
+    else
+      echo "Could not determine script directory. Please run setup.sh first."
+      return 1
+    fi
   fi
   
   echo "Sourced files:"
   for ((i=0; i<${#sourced_files[@]}; i++)); do
     echo "$((i+1)): $(basename "${sourced_files[$i]}")"
   done
+  echo "N: Create new file"
   echo ""
   
-  read -p "Enter the number of the file to edit: " choice
+  read -p "Enter the number of the file to edit (or 'N' for new): " choice
   
-  if [[ $choice =~ ^[0-9]+$ ]] && (( choice > 0 && choice <= ${#sourced_files[@]} )); then
+  # Handle new file creation
+  if [[ "$choice" =~ ^[Nn]$ ]]; then
+    echo ""
+    read -p "Enter new file name (e.g., mycommands.sh): " new_file_name
+    
+    # Ensure .sh extension
+    if [[ ! "$new_file_name" =~ \.sh$ ]]; then
+      new_file_name="${new_file_name}.sh"
+    fi
+    
+    local new_file_path="${script_dir}/${new_file_name}"
+    
+    # Check if file already exists
+    if [[ -f "$new_file_path" ]]; then
+      echo "File already exists: $new_file_name"
+      read -p "Edit existing file? (Y/n): " edit_existing
+      edit_existing=${edit_existing:-Y}
+      if [[ ! "$edit_existing" =~ ^[Yy]$ ]]; then
+        return 1
+      fi
+    else
+      # Create new file with template
+      cat > "$new_file_path" << 'EOF'
+#!/bin/bash
+
+# Add your custom bash functions and aliases here
+
+EOF
+      echo "✓ Created new file: $new_file_name"
+    fi
+    
+    selected_file="$new_file_path"
+    local file_name="$new_file_name"
+    local is_new_file=true
+    
+  elif [[ $choice =~ ^[0-9]+$ ]] && (( choice > 0 && choice <= ${#sourced_files[@]} )); then
     selected_file="${sourced_files[$((choice-1))]}"
     local file_name="$(basename "$selected_file")"
-    
-    # Get file hash before editing
-    local hash_before=""
-    if command -v sha256sum &> /dev/null; then
-      hash_before=$(sha256sum "$selected_file" 2>/dev/null | awk '{print $1}')
-    elif command -v shasum &> /dev/null; then
-      hash_before=$(shasum -a 256 "$selected_file" 2>/dev/null | awk '{print $1}')
-    fi
-    
-    # Open in editor (wait for VSCode to close if using --wait flag)
-    if command -v code &> /dev/null; then
-      # Try to use --wait flag so we know when editing is done
-      if code --help 2>&1 | grep -q "\--wait"; then
-        echo "Opening $file_name in VSCode (waiting for editor to close)..."
-        code --wait "$selected_file"
-      else
-        echo "Opening $file_name in VSCode..."
-        code "$selected_file"
-        echo ""
-        echo "⚠ VSCode opened in background. Press Enter when done editing..."
-        read
-      fi
-    else
-      vim "$selected_file"
-    fi
-    
-    # Get file hash after editing
-    local hash_after=""
-    if command -v sha256sum &> /dev/null; then
-      hash_after=$(sha256sum "$selected_file" 2>/dev/null | awk '{print $1}')
-    elif command -v shasum &> /dev/null; then
-      hash_after=$(shasum -a 256 "$selected_file" 2>/dev/null | awk '{print $1}')
-    fi
-    
-    # Check if file was modified
-    if [[ -n "$hash_before" && -n "$hash_after" && "$hash_before" != "$hash_after" ]]; then
-      echo ""
-      echo "✓ Changes detected in $file_name"
-      
-      # Check if we're in a git repo
-      if [[ -d "$script_dir/.git" ]]; then
-        echo ""
-        read -p "Commit and push changes? (Y/n): " should_commit
-        should_commit=${should_commit:-Y}  # Default to Yes
-        
-        if [[ "$should_commit" =~ ^[Yy]$ ]]; then
-          echo ""
-          echo "🔄 Starting git sync..."
-          echo "────────────────────────────────────────────────"
-          
-          (
-            cd "$script_dir" || exit 1
-            
-            # Show diff
-            echo ""
-            echo "📝 Changes made:"
-            git diff "$file_name" | head -20
-            local diff_lines=$(git diff "$file_name" | wc -l)
-            if [[ $diff_lines -gt 20 ]]; then
-              echo "... ($(($diff_lines - 20)) more lines)"
-            fi
-            
-            echo ""
-            read -p "Commit message (or press Enter for default): " commit_msg
-            
-            if [[ -z "$commit_msg" ]]; then
-              commit_msg="Update $file_name"
-            fi
-            
-            echo ""
-            echo "💾 Committing changes..."
-            
-            # Stage the file
-            git add "$file_name"
-            
-            # Commit
-            if git commit -m "$commit_msg"; then
-              echo "✓ Committed: $commit_msg"
-              
-              # Push to remote
-              echo ""
-              echo "📤 Pushing to remote..."
-              if git push origin HEAD; then
-                echo "✓ Successfully pushed to remote"
-                echo "────────────────────────────────────────────────"
-              else
-                echo "✗ Failed to push (you may need to push manually later)"
-              fi
-            else
-              echo "✗ Commit failed"
-            fi
-          )
-        else
-          echo "Skipped commit. Don't forget to commit your changes later!"
-        fi
-      fi
-      
-      # Ask to reload shell
-      echo ""
-      read -p "Reload shell configuration? (Y/n): " should_reload
-      should_reload=${should_reload:-Y}  # Default to Yes
-      
-      if [[ "$should_reload" =~ ^[Yy]$ ]]; then
-        source ~/.bashrc
-        echo "✓ Shell configuration reloaded"
-      fi
-    else
-      echo ""
-      echo "No changes detected"
-    fi
+    local is_new_file=false
   else
     echo "Invalid choice."
     return 1
+  fi
+  
+  # Get file hash before editing
+  local hash_before=""
+  if command -v sha256sum &> /dev/null; then
+    hash_before=$(sha256sum "$selected_file" 2>/dev/null | awk '{print $1}')
+  elif command -v shasum &> /dev/null; then
+    hash_before=$(shasum -a 256 "$selected_file" 2>/dev/null | awk '{print $1}')
+  fi
+  
+  # Open in editor (wait for VSCode to close if using --wait flag)
+  if command -v code &> /dev/null; then
+    # Try to use --wait flag so we know when editing is done
+    if code --help 2>&1 | grep -q "\--wait"; then
+      echo "Opening $file_name in VSCode (waiting for editor to close)..."
+      code --wait "$selected_file"
+    else
+      echo "Opening $file_name in VSCode..."
+      code "$selected_file"
+      echo ""
+      echo "⚠ VSCode opened in background. Press Enter when done editing..."
+      read
+    fi
+  else
+    vim "$selected_file"
+  fi
+  
+  # Get file hash after editing
+  local hash_after=""
+  if command -v sha256sum &> /dev/null; then
+    hash_after=$(sha256sum "$selected_file" 2>/dev/null | awk '{print $1}')
+  elif command -v shasum &> /dev/null; then
+    hash_after=$(shasum -a 256 "$selected_file" 2>/dev/null | awk '{print $1}')
+  fi
+  
+  # Check if file was modified or if it's a new file
+  local file_changed=false
+  if [[ "$is_new_file" == true ]]; then
+    file_changed=true
+  elif [[ -n "$hash_before" && -n "$hash_after" && "$hash_before" != "$hash_after" ]]; then
+    file_changed=true
+  fi
+  
+  if [[ "$file_changed" == true ]]; then
+    echo ""
+    echo "✓ Changes detected in $file_name"
+    
+    # Add to bashrc if it's a new file
+    if [[ "$is_new_file" == true ]]; then
+      # Check if file is already sourced in bashrc
+      if grep -q "source \"$selected_file\"" "$bashrc"; then
+        echo "✓ File already sourced in bashrc"
+      else
+        echo ""
+        read -p "Add to bashrc for auto-loading? (Y/n): " add_to_bashrc
+        add_to_bashrc=${add_to_bashrc:-Y}
+        
+        if [[ "$add_to_bashrc" =~ ^[Yy]$ ]]; then
+          # Check if "# Sourced from setup.sh" section exists
+          if grep -q "# Sourced from setup.sh" "$bashrc"; then
+            # Add after the comment line
+            sed -i "/# Sourced from setup.sh/a source \"$selected_file\"" "$bashrc"
+          else
+            # Create new section
+            echo "" >> "$bashrc"
+            echo "# Sourced from setup.sh" >> "$bashrc"
+            echo "source \"$selected_file\"" >> "$bashrc"
+          fi
+          echo "✓ Added to bashrc: $file_name"
+        fi
+      fi
+    fi
+    
+    # Check if we're in a git repo
+    if [[ -d "$script_dir/.git" ]]; then
+      echo ""
+      read -p "Commit and push changes? (Y/n): " should_commit
+      should_commit=${should_commit:-Y}  # Default to Yes
+      
+      if [[ "$should_commit" =~ ^[Yy]$ ]]; then
+        echo ""
+        echo "🔄 Starting git sync..."
+        echo "────────────────────────────────────────────────"
+        
+        (
+          cd "$script_dir" || exit 1
+          
+          # Show diff
+          echo ""
+          echo "📝 Changes made:"
+          git diff "$file_name" | head -20
+          local diff_lines=$(git diff "$file_name" | wc -l)
+          if [[ $diff_lines -gt 20 ]]; then
+            echo "... ($(($diff_lines - 20)) more lines)"
+          fi
+          
+          echo ""
+          read -p "Commit message (or press Enter for default): " commit_msg
+          
+          if [[ -z "$commit_msg" ]]; then
+            commit_msg="Update $file_name"
+          fi
+          
+          echo ""
+          echo "💾 Committing changes..."
+          
+          # Stage the file
+          git add "$file_name"
+          
+          # Commit
+          if git commit -m "$commit_msg"; then
+            echo "✓ Committed: $commit_msg"
+            
+            # Push to remote
+            echo ""
+            echo "📤 Pushing to remote..."
+            if git push origin HEAD; then
+              echo "✓ Successfully pushed to remote"
+              echo "────────────────────────────────────────────────"
+            else
+              echo "✗ Failed to push (you may need to push manually later)"
+            fi
+          else
+            echo "✗ Commit failed"
+          fi
+        )
+      else
+        echo "Skipped commit. Don't forget to commit your changes later!"
+      fi
+    fi
+    
+    # Ask to reload shell
+    echo ""
+    read -p "Reload shell configuration? (Y/n): " should_reload
+    should_reload=${should_reload:-Y}  # Default to Yes
+    
+    if [[ "$should_reload" =~ ^[Yy]$ ]]; then
+      source ~/.bashrc
+      echo "✓ Shell configuration reloaded"
+    fi
+  else
+    echo ""
+    echo "No changes detected"
   fi
 }
 
