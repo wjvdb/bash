@@ -55,11 +55,6 @@ EOF
     fi
   done < <(grep -A 100 "# Sourced from setup.sh" "${HOME}/.bashrc" 2>/dev/null)
   
-  # Add current script to search path
-  if [[ -f "$BASH_SOURCE" ]]; then
-    sourced_files+=("$BASH_SOURCE")
-  fi
-  
   # === ALIASES ===
   echo "╔════════════════════════════════════════════════════════════╗"
   echo "║                         ALIASES                            ║"
@@ -93,55 +88,68 @@ EOF
   echo "╚════════════════════════════════════════════════════════════╝"
   echo ""
   
-  # Get all function names
+  # Build a single index of all functions from all files at once (much faster!)
+  declare -A func_descriptions
+  declare -A func_locations
+  
+  for file in "${sourced_files[@]}"; do
+    # Read the entire file once and parse it in bash - much faster than multiple sed calls
+    local in_function=""
+    local looking_for_desc=0
+    
+    while IFS= read -r line; do
+      # Check if this is a function definition
+      if [[ "$line" =~ ^function\ ([a-zA-Z_][a-zA-Z0-9_]*)\(\) ]] || [[ "$line" =~ ^([a-zA-Z_][a-zA-Z0-9_]*)\(\) ]]; then
+        in_function="${BASH_REMATCH[1]}"
+        
+        # Skip if already found (first occurrence wins)
+        if [[ -z "${func_descriptions[$in_function]}" ]]; then
+          looking_for_desc=5  # Look for description in next 5 lines
+          func_locations["$in_function"]="$file"
+        else
+          in_function=""
+        fi
+        
+      # If we're looking for a description
+      elif [[ $looking_for_desc -gt 0 && -n "$in_function" ]]; then
+        # Check if it's a comment line
+        if [[ "$line" =~ ^[[:space:]]*#[[:space:]]*@desc[[:space:]]*(.*) ]]; then
+          # Found @desc tag
+          func_descriptions["$in_function"]="${BASH_REMATCH[1]}"
+          in_function=""
+          looking_for_desc=0
+        elif [[ "$line" =~ ^[[:space:]]*#[[:space:]]+(.*) ]]; then
+          # Found a regular comment (only use if no description yet)
+          if [[ -z "${func_descriptions[$in_function]}" ]]; then
+            local comment="${BASH_REMATCH[1]}"
+            # Skip empty comments or those starting with @
+            if [[ -n "$comment" && ! "$comment" =~ ^@ ]]; then
+              func_descriptions["$in_function"]="$comment"
+              in_function=""
+              looking_for_desc=0
+            fi
+          fi
+        elif [[ ! "$line" =~ ^[[:space:]]*# ]]; then
+          # Hit non-comment line, stop looking
+          if [[ -z "${func_descriptions[$in_function]}" ]]; then
+            func_descriptions["$in_function"]="(no description)"
+          fi
+          in_function=""
+          looking_for_desc=0
+        fi
+        
+        ((looking_for_desc--))
+      fi
+    done < "$file"
+  done
+  
+  # Get all function names and display them
   local function_list=($(compgen -A function | grep -v "^_" | sort))
   local func_count=0
   
   for func in "${function_list[@]}"; do
-    local description=""
-    local file_location=""
-    
-    # Search for function definition in sourced files
-    for file in "${sourced_files[@]}"; do
-      # Look for function definition
-      if grep -q "^function ${func}()" "$file" 2>/dev/null || \
-         grep -q "^${func}()" "$file" 2>/dev/null; then
-        
-        file_location="$file"
-        
-        # Extract description using multiple methods:
-        
-        # Method 1: Look for @desc tag (preferred)
-        description=$(sed -n "/^function ${func}()/,/^}/p" "$file" 2>/dev/null | \
-                      grep -m 1 "^[[:space:]]*#[[:space:]]*@desc" | \
-                      sed 's/^[[:space:]]*#[[:space:]]*@desc[[:space:]]*//')
-        
-        # Method 2: If no @desc, look for # comment on same line as function
-        if [[ -z "$description" ]]; then
-          description=$(grep "^function ${func}()" "$file" 2>/dev/null | \
-                       sed 's/.*#[[:space:]]*//')
-        fi
-        
-        # Method 3: Look for first comment line after function declaration
-        if [[ -z "$description" ]]; then
-          description=$(sed -n "/^function ${func}()/,/^}/p" "$file" 2>/dev/null | \
-                       sed -n '2p' | \
-                       grep "^[[:space:]]*#" | \
-                       sed 's/^[[:space:]]*#[[:space:]]*//' | \
-                       sed 's/@desc[[:space:]]*//')
-        fi
-        
-        # Method 4: Try without 'function' keyword
-        if [[ -z "$description" ]]; then
-          description=$(sed -n "/^${func}()/,/^}/p" "$file" 2>/dev/null | \
-                       sed -n '2p' | \
-                       grep "^[[:space:]]*#" | \
-                       sed 's/^[[:space:]]*#[[:space:]]*//')
-        fi
-        
-        break
-      fi
-    done
+    local description="${func_descriptions[$func]}"
+    local file_location="${func_locations[$func]}"
     
     # Default description if none found
     if [[ -z "$description" ]]; then
