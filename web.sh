@@ -1,5 +1,5 @@
 web() {
-  # Manage saved websites: open or edit the list
+  # @desc Manage saved websites (usage: web to open, web -a to add, web -e to edit)
   local OPTIND=1
   local website_file="${HOME}/.saved_websites"
 

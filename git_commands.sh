@@ -14,12 +14,8 @@ alias givehead='gp'
 alias forcehead='gpf'
 
 
-# Add only changed (modified/deleted) files and commit
-# Does NOT add new untracked files
-# Usage:
-#   gach             # Opens editor for commit message
-#   gach "message"   # Commits with specified message
 function gach() {
+  # @desc Add changed files and commit (usage: gach "message" or just gach for editor)
   if [ -z "$1" ]; then
     # No message provided - stage modified files and commit in editor
     git add -u && git commit
@@ -31,7 +27,7 @@ function gach() {
 
 
 function unfuck() {
-  # Reset the current branch to match the remote and optionally delete untracked files
+  # @desc Reset current branch to match remote and optionally delete untracked files
   git fetch origin
   current_branch=$(git symbolic-ref --short HEAD)
   git reset --hard origin/$current_branch
@@ -44,7 +40,7 @@ function unfuck() {
 }
 
 function gnb() {
-  # Create and push a new branch to origin
+  # @desc Create and push a new branch (usage: gnb branch-name)
   if [ -z "$1" ]; then
     echo "Usage: newbranch <branch-name>"
     return 1
@@ -55,8 +51,8 @@ function gnb() {
 
 
 
-# git log (graph, decorate, oneline, abbrev-commit) for a single path
 glf() {
+  # @desc Git log for a specific file with options (use -h for help)
   # Usage:
   #   glf path/to/file.ext               # basic history for that path
   #   glf -f path/to/file.ext            # follow across renames
@@ -135,46 +131,44 @@ EOF
 
 
 
-# Search commit messages and descriptions for a term
-# Usage: gsc "<search-term>"
-# Example: gsc "fix bug"
 gsc() {
-    if [ -z "$1" ]; then
-        echo "Usage: gsc <search-term>"
-        return 1
-    fi
+  # @desc Search commit messages for a term (usage: gsc "search term")
+  if [ -z "$1" ]; then
+      echo "Usage: gsc <search-term>"
+      return 1
+  fi
 
-    local term="$1"
+  local term="$1"
 
-    # Search commit messages AND descriptions
-    git log --all -E --grep="$term" --pretty=format:"%C(yellow)%h%Creset %Cgreen%ad%Creset %s" --date=short
+  # Search commit messages AND descriptions
+  git log --all -E --grep="$term" --pretty=format:"%C(yellow)%h%Creset %Cgreen%ad%Creset %s" --date=short
 }
 
 
-# Show file history with diffs for last N commits
 gfh() {
-    if [ -z "$1" ] || [ -z "$2" ]; then
-        echo 'Usage: gfh "<filename>" <number-of-commits>'
-        return 1
-    fi
+  # @desc Show file history with diffs for last N commits (usage: gfh "file.txt" 5)
+  if [ -z "$1" ] || [ -z "$2" ]; then
+      echo 'Usage: gfh "<filename>" <number-of-commits>'
+      return 1
+  fi
 
-    local file="$1"
-    local count="$2"
+  local file="$1"
+  local count="$2"
 
-    # Get commits that touched this file
-    commits=$(git log -n "$count" --pretty=format:"%H" -- "$file")
+  # Get commits that touched this file
+  commits=$(git log -n "$count" --pretty=format:"%H" -- "$file")
 
-    if [ -z "$commits" ]; then
-        echo "No commits found for file: $file"
-        return 1
-    fi
+  if [ -z "$commits" ]; then
+      echo "No commits found for file: $file"
+      return 1
+  fi
 
-    for c in $commits; do
-        echo -e "\n=============================="
-        echo "Commit: $c"
-        echo "------------------------------"
-        git show "$c" -- "$file"
-    done
+  for c in $commits; do
+      echo -e "\n=============================="
+      echo "Commit: $c"
+      echo "------------------------------"
+      git show "$c" -- "$file"
+  done
 }
 
 

@@ -1,5 +1,5 @@
 proj() {
-  # Manage saved project folders: open or edit the list
+  # @desc Manage saved project folders (usage: proj to list, proj -a to add, proj -e to edit)
   local OPTIND=1
   local project_file="${HOME}/.project_folders"
 

@@ -1,6 +1,5 @@
-
-# Simple interactive TODO function
 todo() {
+  # @desc Interactive TODO list manager (usage: todo to view, todo -a to add, todo -e to delete)
   # Config: file location (override with: export TODO_FILE="path")
   local TODO_FILE="${TODO_FILE:-$HOME/.todo.txt}"
   local RESET=$'\e[0m'

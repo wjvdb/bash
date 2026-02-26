@@ -10,14 +10,19 @@ alias portal='cd ~'
 
 
 function exc() {
-# Edit sourced files in bashrc
+  # @desc Edit sourced bash helper files with auto-sync to git
   local bashrc="${HOME}/.bashrc"
   local sourced_files=()
+  local script_dir=""
   
-
+  # Extract sourced files from bashrc
   while IFS= read -r line; do
     if [[ "$line" =~ ^source\ \"(.*)\" ]]; then
       sourced_files+=("${BASH_REMATCH[1]}")
+      # Get the script directory from the first sourced file
+      if [[ -z "$script_dir" ]]; then
+        script_dir="$(dirname "${BASH_REMATCH[1]}")"
+      fi
     fi
   done < <(grep -A 100 "# Sourced from setup.sh" "$bashrc")
   
@@ -36,11 +41,107 @@ function exc() {
   
   if [[ $choice =~ ^[0-9]+$ ]] && (( choice > 0 && choice <= ${#sourced_files[@]} )); then
     selected_file="${sourced_files[$((choice-1))]}"
+    local file_name="$(basename "$selected_file")"
     
+    # Get file hash before editing
+    local hash_before=""
+    if command -v sha256sum &> /dev/null; then
+      hash_before=$(sha256sum "$selected_file" 2>/dev/null | awk '{print $1}')
+    elif command -v shasum &> /dev/null; then
+      hash_before=$(shasum -a 256 "$selected_file" 2>/dev/null | awk '{print $1}')
+    fi
+    
+    # Open in editor (wait for VSCode to close if using --wait flag)
     if command -v code &> /dev/null; then
-      code "$selected_file"
+      # Try to use --wait flag so we know when editing is done
+      if code --help 2>&1 | grep -q "\--wait"; then
+        echo "Opening $file_name in VSCode (waiting for editor to close)..."
+        code --wait "$selected_file"
+      else
+        echo "Opening $file_name in VSCode..."
+        code "$selected_file"
+        echo ""
+        echo "⚠ VSCode opened in background. Press Enter when done editing..."
+        read
+      fi
     else
       vim "$selected_file"
+    fi
+    
+    # Get file hash after editing
+    local hash_after=""
+    if command -v sha256sum &> /dev/null; then
+      hash_after=$(sha256sum "$selected_file" 2>/dev/null | awk '{print $1}')
+    elif command -v shasum &> /dev/null; then
+      hash_after=$(shasum -a 256 "$selected_file" 2>/dev/null | awk '{print $1}')
+    fi
+    
+    # Check if file was modified
+    if [[ -n "$hash_before" && -n "$hash_after" && "$hash_before" != "$hash_after" ]]; then
+      echo ""
+      echo "✓ Changes detected in $file_name"
+      
+      # Check if we're in a git repo
+      if [[ -d "$script_dir/.git" ]]; then
+        echo ""
+        read -p "Commit and push changes? (Y/n): " should_commit
+        should_commit=${should_commit:-Y}  # Default to Yes
+        
+        if [[ "$should_commit" =~ ^[Yy]$ ]]; then
+          (
+            cd "$script_dir" || exit 1
+            
+            # Show diff
+            echo ""
+            echo "Changes made:"
+            git diff "$file_name" | head -20
+            local diff_lines=$(git diff "$file_name" | wc -l)
+            if [[ $diff_lines -gt 20 ]]; then
+              echo "... ($(($diff_lines - 20)) more lines)"
+            fi
+            
+            echo ""
+            read -p "Commit message (or press Enter for default): " commit_msg
+            
+            if [[ -z "$commit_msg" ]]; then
+              commit_msg="Update $file_name"
+            fi
+            
+            # Stage the file
+            git add "$file_name"
+            
+            # Commit
+            if git commit -m "$commit_msg"; then
+              echo "✓ Committed: $commit_msg"
+              
+              # Push to remote
+              echo "Pushing to remote..."
+              if git push origin HEAD; then
+                echo "✓ Successfully pushed to remote"
+              else
+                echo "✗ Failed to push (you may need to push manually later)"
+              fi
+            else
+              echo "✗ Commit failed"
+            fi
+          )
+        else
+          echo "Skipped commit. Don't forget to commit your changes later!"
+        fi
+      fi
+      
+      # Ask to reload shell
+      echo ""
+      read -p "Reload shell configuration? (Y/n): " should_reload
+      should_reload=${should_reload:-Y}  # Default to Yes
+      
+      if [[ "$should_reload" =~ ^[Yy]$ ]]; then
+        source ~/.bashrc
+        echo "✓ Shell configuration reloaded"
+      fi
+    else
+      echo ""
+      echo "No changes detected"
     fi
   else
     echo "Invalid choice."
@@ -49,16 +150,16 @@ function exc() {
 }
 
 function pp { 
-  # Navigate up N directories
+  # @desc Navigate up N directories (usage: pp 3 to go up 3 levels)
   num=${1:-1} 
   while [ $num -ne 0 ]; do 
     cd .. 
     num=$((num-1)) 
   done 
-} 
+}
 
 replace_in_files() { 
-  # Replace old_word with new_word in files with specified extensions
+  # @desc Replace text in files by extension (usage: replace_in_files old new js)
   if [ $# -ne 2 ]; then 
     echo "Usage: replace_in_files <old_word> <new_word> <file_extensions (optional)>" 
     return 1 
@@ -66,11 +167,11 @@ replace_in_files() {
   local old_word="$1" 
   local new_word="$2" 
   local extensions="${3:-*}"  # Default: all files if no extension provided 
-  find . -type f -name "*.$extensions" -exec sed -i '' -e "s/$old_word/$new_word/g" {} \; 
-}  
+  find . -type f -name "*.$extensions" -exec sed -i "s/$old_word/$new_word/g" {} \; 
+}
 
 ss() { 
-  # Search for a word in files within a folder
+  # @desc Search for text in files recursively (usage: ss "searchterm" [folder])
   if [ $# -lt 1 ]; then 
     echo "Usage: search_folder <word> [folder_path]" 
     return 1 
@@ -78,15 +179,14 @@ ss() {
   word="$1" 
   folder_path="${2:-$PWD}" 
   grep -r -i "$word" "$folder_path" 
-} 
+}
 edir () { 
-
+  # @desc Create directory and cd into it (usage: edir newfolder)
   mkdir -p "$1" && cd "$1" 
-
-} 
+}
 
 sse() { 
-  # Search for a word in files within a folder, filtered by extension
+  # @desc Search for text in files by extension (usage: sse "term" js)
   if [ $# -lt 2 ]; then 
     echo "Usage: sse <word> <extension> [folder_path]" 
     return 1 
@@ -99,12 +199,12 @@ sse() {
 
 
 function sfs() { 
-  # Search for files or directories matching the search term
+  # @desc Search for files by name pattern (usage: sfs pattern [path])
   local search_term="$1" 
   local search_path="${2:-.}"  # Default to current directory if no path is given 
   find "$search_path" -type f -name "*$search_term*" 2>/dev/null || \ 
   find "$search_path" -type d -name "*$search_term*" 2>/dev/null 
-} 
+}
 function sfsv() { 
   # Search for files matching the search term and open in vim if one result
   local search_term="$1" 
