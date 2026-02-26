@@ -43,13 +43,20 @@ function exc() {
   for ((i=0; i<${#sourced_files[@]}; i++)); do
     echo "$((i+1)): $(basename "${sourced_files[$i]}")"
   done
+  echo "B: Edit .bashrc"
   echo "N: Create new file"
   echo ""
   
-  read -p "Enter the number of the file to edit (or 'N' for new): " choice
+  read -p "Enter the number of the file to edit (or 'B' for bashrc, 'N' for new): " choice
   
+  # Handle bashrc editing
+  if [[ "$choice" =~ ^[Bb]$ ]]; then
+    selected_file="$bashrc"
+    local file_name=".bashrc"
+    local is_new_file=false
+    
   # Handle new file creation
-  if [[ "$choice" =~ ^[Nn]$ ]]; then
+  elif [[ "$choice" =~ ^[Nn]$ ]]; then
     echo ""
     read -p "Enter new file name (e.g., mycommands.sh): " new_file_name
     
@@ -163,8 +170,8 @@ EOF
       fi
     fi
     
-    # Check if we're in a git repo
-    if [[ -d "$script_dir/.git" ]]; then
+    # Check if we're in a git repo and NOT editing bashrc (bashrc is not in the repo)
+    if [[ -d "$script_dir/.git" ]] && [[ "$file_name" != ".bashrc" ]]; then
       echo ""
       read -p "Commit and push changes? (Y/n): " should_commit
       should_commit=${should_commit:-Y}  # Default to Yes
