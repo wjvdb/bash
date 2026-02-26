@@ -9,39 +9,64 @@ _auto_pull_bash_helpers() {
   (
     cd "$SCRIPT_DIR" 2>/dev/null || return
     
+    # Show heads-up that we're checking for updates
+    echo "🔄 Checking for bash helper updates..."
+    
     # Fetch silently
-    git fetch origin --quiet 2>/dev/null || return
+    git fetch origin --quiet 2>/dev/null || {
+      echo "⚠️  Could not check for updates (no network connection?)"
+      return
+    }
     
     # Check if we're behind
     LOCAL=$(git rev-parse @)
-    REMOTE=$(git rev-parse @{u} 2>/dev/null) || return
+    REMOTE=$(git rev-parse @{u} 2>/dev/null) || {
+      echo "✓ No remote tracking branch configured"
+      return
+    }
     
     if [ "$LOCAL" != "$REMOTE" ]; then
-      echo "[Auto-Pull] Updating bash helper scripts..."
+      echo ""
+      echo "📥 Updates found! Syncing bash helper scripts..."
+      echo "────────────────────────────────────────────────"
       
       # Check for local changes
       if [[ -n $(git status --porcelain) ]]; then
-        echo "[Auto-Pull] Local changes detected, stashing..."
+        echo "💾 Stashing local changes..."
         git stash push -q -m "Auto-stash before pull $(date '+%Y-%m-%d %H:%M:%S')"
         STASHED=1
       fi
       
       # Pull changes
-      git pull origin HEAD --quiet && {
-        echo "[Auto-Pull] Successfully updated bash helpers"
+      if git pull origin HEAD --quiet; then
+        echo "✓ Successfully updated bash helpers"
         
         # Restore stashed changes if any
         if [[ $STASHED -eq 1 ]]; then
-          echo "[Auto-Pull] Restoring local changes..."
+          echo "♻️  Restoring local changes..."
           git stash pop -q
         fi
         
+        # Show what changed
+        echo ""
+        echo "Recent changes:"
+        git log --oneline -3
+        echo "────────────────────────────────────────────────"
+        
         # Reload bash configuration
-        echo "[Auto-Pull] Reloading shell configuration..."
+        echo "🔃 Reloading shell configuration..."
         source ~/.bashrc
-      } || {
-        echo "[Auto-Pull] Failed to pull changes"
-      }
+        echo "✓ Shell reloaded with latest changes"
+        echo ""
+      else
+        echo "✗ Failed to pull changes"
+        if [[ $STASHED -eq 1 ]]; then
+          echo "♻️  Restoring stashed changes..."
+          git stash pop -q
+        fi
+      fi
+    else
+      echo "✓ Bash helpers are up to date"
     fi
   ) &
 }

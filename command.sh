@@ -88,12 +88,16 @@ function exc() {
         should_commit=${should_commit:-Y}  # Default to Yes
         
         if [[ "$should_commit" =~ ^[Yy]$ ]]; then
+          echo ""
+          echo "🔄 Starting git sync..."
+          echo "────────────────────────────────────────────────"
+          
           (
             cd "$script_dir" || exit 1
             
             # Show diff
             echo ""
-            echo "Changes made:"
+            echo "📝 Changes made:"
             git diff "$file_name" | head -20
             local diff_lines=$(git diff "$file_name" | wc -l)
             if [[ $diff_lines -gt 20 ]]; then
@@ -107,6 +111,9 @@ function exc() {
               commit_msg="Update $file_name"
             fi
             
+            echo ""
+            echo "💾 Committing changes..."
+            
             # Stage the file
             git add "$file_name"
             
@@ -115,9 +122,11 @@ function exc() {
               echo "✓ Committed: $commit_msg"
               
               # Push to remote
-              echo "Pushing to remote..."
+              echo ""
+              echo "📤 Pushing to remote..."
               if git push origin HEAD; then
                 echo "✓ Successfully pushed to remote"
+                echo "────────────────────────────────────────────────"
               else
                 echo "✗ Failed to push (you may need to push manually later)"
               fi
