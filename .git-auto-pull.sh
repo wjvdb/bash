@@ -33,18 +33,18 @@ _auto_pull_bash_helpers() {
       # Check for local changes
       if [[ -n $(git status --porcelain) ]]; then
         echo "💾 Stashing local changes..."
-        git stash push -q -m "Auto-stash before pull $(date '+%Y-%m-%d %H:%M:%S')"
+        git stash push -q -m "Auto-stash before pull $(date '+%Y-%m-%d %H:%M:%S')" 2>&1 | grep -v "LF will be replaced by CRLF" || true
         STASHED=1
       fi
       
       # Pull changes
-      if git pull origin HEAD --quiet; then
+      if git pull origin HEAD --quiet 2>&1 | grep -v "LF will be replaced by CRLF" >/dev/null; then
         echo "✓ Successfully updated bash helpers"
         
         # Restore stashed changes if any
         if [[ $STASHED -eq 1 ]]; then
           echo "♻️  Restoring local changes..."
-          git stash pop -q
+          git stash pop -q 2>&1 | grep -v "LF will be replaced by CRLF" || true
         fi
         
         # Show what changed
@@ -55,20 +55,23 @@ _auto_pull_bash_helpers() {
         
         # Reload bash configuration
         echo "🔃 Reloading shell configuration..."
-        source ~/.bashrc
+        source ~/.bashrc 2>/dev/null
         echo "✓ Shell reloaded with latest changes"
         echo ""
       else
         echo "✗ Failed to pull changes"
         if [[ $STASHED -eq 1 ]]; then
           echo "♻️  Restoring stashed changes..."
-          git stash pop -q
+          git stash pop -q 2>&1 | grep -v "LF will be replaced by CRLF" || true
         fi
       fi
     else
       echo "✓ Bash helpers are up to date"
     fi
   ) &
+  
+  # Disown the background job to prevent job control messages
+  disown 2>/dev/null
 }
 
 # Run auto-pull on shell startup (only if interactive shell)

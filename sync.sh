@@ -6,6 +6,9 @@ sync() {
   local SCRIPT_DIR="C:/com/bash"
   local current_dir="$(pwd)"
   
+  # Wait for any background jobs to finish (like auto-pull)
+  wait 2>/dev/null
+  
   # Change to script directory
   cd "$SCRIPT_DIR" || {
     echo "Error: Cannot access $SCRIPT_DIR"
@@ -20,18 +23,18 @@ sync() {
   # Pull latest changes first
   echo "📥 [1/3] Pulling latest changes from remote..."
   echo "────────────────────────────────────────────────"
-  git fetch origin
+  git fetch origin --quiet 2>&1 | grep -v "LF will be replaced by CRLF" | grep -v "^$" || true
   
   if [[ -n $(git status --porcelain) ]]; then
     # Stash local changes if any
     echo "💾 Stashing local changes temporarily..."
-    git stash push -q -m "Auto-stash during sync $(date '+%Y-%m-%d %H:%M:%S')"
+    git stash push -q -m "Auto-stash during sync $(date '+%Y-%m-%d %H:%M:%S')" 2>&1 | grep -v "LF will be replaced by CRLF" | grep -v "^$" || true
     STASHED=1
   fi
   
-  git pull origin HEAD || {
+  git pull origin HEAD --quiet 2>&1 | grep -v "LF will be replaced by CRLF" | grep -v "^$" || {
     echo "✗ Failed to pull changes"
-    [[ $STASHED -eq 1 ]] && git stash pop -q
+    [[ $STASHED -eq 1 ]] && git stash pop -q 2>&1 | grep -v "LF will be replaced by CRLF" | grep -v "^$" || true
     cd "$current_dir"
     return 1
   }
@@ -39,7 +42,7 @@ sync() {
   # Restore stashed changes
   if [[ $STASHED -eq 1 ]]; then
     echo "♻️  Restoring stashed changes..."
-    git stash pop -q
+    git stash pop -q 2>&1 | grep -v "LF will be replaced by CRLF" | grep -v "^$" || true
   fi
   
   echo "✓ Pull complete"
@@ -58,14 +61,14 @@ sync() {
     if [[ -n "$message" ]]; then
       echo ""
       echo "💾 Committing changes..."
-      git add -A
-      git commit -m "$message"
+      git add -A 2>&1 | grep -v "LF will be replaced by CRLF" | grep -v "^$" || true
+      git commit -m "$message" 2>&1 | grep -v "LF will be replaced by CRLF" | grep -E "(^\[|files? changed|insertions?|deletions?)" || true
       
       # Push changes
       echo ""
       echo "📤 [3/3] Pushing changes to remote..."
       echo "────────────────────────────────────────────────"
-      if git push origin HEAD; then
+      if git push origin HEAD 2>&1 | grep -v "LF will be replaced by CRLF" | grep -E "(To |->|Everything up-to-date|^\s*$)" | grep -v "^$"; then
         echo ""
         echo "╔════════════════════════════════════════════════════════════╗"
         echo "║                  ✓ Sync Complete! 🎉                      ║"
