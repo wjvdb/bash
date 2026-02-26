@@ -85,6 +85,18 @@ edir () {
 
 } 
 
+sse() { 
+  # Search for a word in files within a folder, filtered by extension
+  if [ $# -lt 2 ]; then 
+    echo "Usage: sse <word> <extension> [folder_path]" 
+    return 1 
+  fi 
+  word="$1" 
+  extension="$2" 
+  folder_path="${3:-$PWD}" 
+  grep -r -i "$word" "$folder_path" --include="*.$extension" 
+}
+
 
 function sfs() { 
   # Search for files or directories matching the search term
