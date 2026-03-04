@@ -450,7 +450,7 @@ EOF
 # Merge current branch into main with validation and optional rebase
 # Usage: mergemain
 mergemain() {
-    # Get current branch
+    # merge current branch into main with checks and optional rebase
     local current_branch=$(git symbolic-ref --short HEAD 2>/dev/null)
     
     if [ -z "$current_branch" ]; then
@@ -904,4 +904,45 @@ gta() {
         echo "Failed to create tag."
         return 1
     fi
+}
+
+
+rebasemain() {
+    # Rebase current branch onto main with checks
+    local current_branch=$(git symbolic-ref --short HEAD 2>/dev/null)
+    
+    if [ -z "$current_branch" ]; then
+        echo "Error: Not on a branch (detached HEAD)"
+        return 1
+    fi
+    
+    if [ "$current_branch" = "main" ]; then
+        echo "Error: Already on main branch. Switch to the branch you want to rebase first."
+        return 1
+    fi
+    
+    echo "Current branch: $current_branch"
+    echo ""
+    
+    echo "Fetching latest from origin..."
+    git fetch origin main || {
+        echo "Warning: Could not fetch from origin. Continuing with local refs..."
+    }
+    
+    if ! git rev-parse --verify main >/dev/null 2>&1; then
+        echo "Error: 'main' branch does not exist locally"
+        return 1
+    fi
+    
+    echo "Rebasing '$current_branch' onto main..."
+    git rebase main || {
+        echo ""
+        echo "Error: Rebase failed. Resolve conflicts and run:"
+        echo "  git rebase --continue"
+        echo "Or abort the rebase with:"
+        echo "  git rebase --abort"
+        return 1
+    }
+    
+    echo "✓ Rebase completed successfully"
 }
