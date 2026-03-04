@@ -16,7 +16,7 @@ synch() {
   }
   
   echo "╔════════════════════════════════════════════════════════════╗"
-  echo "║          Syncing Bash Helper Scripts                      ║"
+  echo "║          Syncing Bash Helper Scripts                       ║"
   echo "╚════════════════════════════════════════════════════════════╝"
   echo ""
   
