@@ -946,3 +946,37 @@ rebasemain() {
     
     echo "✓ Rebase completed successfully"
 }
+
+ginit() {
+    # Initialize a new git repository with optional remote
+    # Usage:
+    #   ginit [remote-url]
+
+    
+
+    git init
+    if [ $? -ne 0 ]; then
+        echo "Error: Failed to initialize git repository"
+        return 1
+    fi
+    
+    echo "Initialized empty git repository"
+
+    git add .
+    if [ $? -ne 0 ]; then
+        echo "Error: Failed to add files"
+        return 1
+    fi
+    
+    echo "Added all files to staging area"
+
+
+    if [ -n "$1" ]; then
+        git remote add origin "$1"
+        if [ $? -ne 0 ]; then
+            echo "Error: Failed to add remote '$1'"
+            return 1
+        fi
+        echo "Added remote 'origin' with URL: $1"
+    fi
+}
