@@ -365,15 +365,20 @@ function dof() {
     echo "No link provided. Aborting."
     return 1
   fi
+  # Extract filename from URL
+  filename="${url##*/}"
+  # Remove query string if present
+  filename="${filename%%\?*}"
   # Try to use curl, fallback to wget
   if command -v curl >/dev/null 2>&1; then
-    curl -LO "$url"
+    curl -L "$url" -o "$filename"
   elif command -v wget >/dev/null 2>&1; then
-    wget "$url"
+    wget -O "$filename" "$url"
   else
     echo "Neither curl nor wget is installed. Cannot download file."
     return 1
   fi
+  echo "✓ Downloaded as $filename"
 }
 
 
