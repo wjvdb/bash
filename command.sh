@@ -332,6 +332,24 @@ function list_files() {
     pattern="${pattern}${file_extension}"
   fi
 
+function dof() {
+  # @desc Prompt for a link and download the file
+  read -p "paste your link: " url
+  if [[ -z "$url" ]]; then
+    echo "No link provided. Aborting."
+    return 1
+  fi
+  # Try to use curl, fallback to wget
+  if command -v curl >/dev/null 2>&1; then
+    curl -LO "$url"
+  elif command -v wget >/dev/null 2>&1; then
+    wget "$url"
+  else
+    echo "Neither curl nor wget is installed. Cannot download file."
+    return 1
+  fi
+}
+
   local results=($(find . -type f -iname "$pattern" 2>/dev/null))
 
   if [[ ${#results[@]} -eq 0 ]]; then
