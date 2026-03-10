@@ -369,6 +369,11 @@ function dof() {
   filename="${url##*/}"
   # Remove query string if present
   filename="${filename%%\?*}"
+  # If filename is empty, prompt user or use default
+  if [[ -z "$filename" ]]; then
+    read -p "Filename could not be determined. Enter filename to save as (or press Enter for 'downloaded_file'): " filename
+    filename=${filename:-downloaded_file}
+  fi
   # Try to use curl, fallback to wget
   if command -v curl >/dev/null 2>&1; then
     curl -L "$url" -o "$filename"
