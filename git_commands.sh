@@ -980,3 +980,120 @@ ginit() {
         echo "Added remote 'origin' with URL: $1"
     fi
 }
+
+pullall() {
+    # @desc Checkout main and pull latest for repos in current directory
+    # Usage:
+    #   pullall           # List repos and select by number or 'all'
+    
+    local base_dir="$(pwd)"
+    local repos=()
+    
+    # Find all subdirectories that are git repos
+    for dir in "$base_dir"/*/; do
+        if [ -d "${dir}.git" ]; then
+            repos+=("$(basename "$dir")")
+        fi
+    done
+    
+    if [ ${#repos[@]} -eq 0 ]; then
+        echo "No git repositories found in current directory"
+        return 1
+    fi
+    
+    echo "Git repositories in $(basename "$base_dir"):"
+    echo "=============================================="
+    
+    local index=1
+    for repo in "${repos[@]}"; do
+        printf "%2d) %s\n" "$index" "$repo"
+        ((index++))
+    done
+    
+    echo ""
+    echo "=============================================="
+    echo "Enter number(s) to select (e.g., 1 2 3), 'all' for all repos, or press Enter to cancel"
+    read -p "> " selection
+    
+    if [ -z "$selection" ]; then
+        echo "Cancelled"
+        return 0
+    fi
+    
+    local selected_repos=()
+    
+    if [ "$selection" = "all" ]; then
+        selected_repos=("${repos[@]}")
+    else
+        # Parse space-separated numbers
+        for num in $selection; do
+            if ! [[ "$num" =~ ^[0-9]+$ ]]; then
+                echo "Error: Invalid input '$num'"
+                return 1
+            fi
+            if [ "$num" -lt 1 ] || [ "$num" -gt ${#repos[@]} ]; then
+                echo "Error: Number $num out of range"
+                return 1
+            fi
+            selected_repos+=("${repos[$((num - 1))]}")
+        done
+    fi
+    
+    echo ""
+    
+    for repo in "${selected_repos[@]}"; do
+        echo "----------------------------------------"
+        echo "Processing: $repo"
+        echo "----------------------------------------"
+        
+        cd "$base_dir/$repo" || {
+            echo "  Error: Could not enter directory"
+            continue
+        }
+        
+        # Check for uncommitted changes
+        if ! git diff-index --quiet HEAD -- 2>/dev/null || [ -n "$(git status --porcelain 2>/dev/null)" ]; then
+            echo "  WARNING: Local changes detected - skipping"
+            git status --short
+            cd "$base_dir"
+            continue
+        fi
+        
+        # Checkout main (try main first, then master)
+        local main_branch=""
+        if git show-ref --verify --quiet refs/heads/main; then
+            main_branch="main"
+        elif git show-ref --verify --quiet refs/heads/master; then
+            main_branch="master"
+        else
+            echo "  Error: No main or master branch found - skipping"
+            cd "$base_dir"
+            continue
+        fi
+        
+        local current_branch=$(git symbolic-ref --short HEAD 2>/dev/null)
+        
+        if [ "$current_branch" != "$main_branch" ]; then
+            echo "  Checking out $main_branch..."
+            git checkout "$main_branch" || {
+                echo "  Error: Could not checkout $main_branch"
+                cd "$base_dir"
+                continue
+            }
+        fi
+        
+        echo "  Pulling latest..."
+        git pull origin "$main_branch" || {
+            echo "  Error: Pull failed"
+            cd "$base_dir"
+            continue
+        }
+        
+        echo "  ✓ Updated to latest $main_branch"
+        cd "$base_dir"
+    done
+    
+    echo ""
+    echo "Done!"
+}
+
