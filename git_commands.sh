@@ -1051,12 +1051,12 @@ pullall() {
             continue
         }
         
-        # Check for uncommitted changes
+        # Check for uncommitted changes and stash them
+        local had_changes=0
         if ! git diff-index --quiet HEAD -- 2>/dev/null || [ -n "$(git status --porcelain 2>/dev/null)" ]; then
-            echo "  WARNING: Local changes detected - skipping"
-            git status --short
-            cd "$base_dir"
-            continue
+            echo "  Local changes detected - stashing..."
+            git stash push -m "pullall auto-stash for $repo"
+            had_changes=1
         fi
         
         # Checkout main (try main first, then master)
@@ -1085,11 +1085,25 @@ pullall() {
         echo "  Pulling latest..."
         git pull origin "$main_branch" || {
             echo "  Error: Pull failed"
+            if [ $had_changes -eq 1 ]; then
+                echo "  Restoring stashed changes..."
+                git stash pop
+            fi
             cd "$base_dir"
             continue
         }
         
         echo "  ✓ Updated to latest $main_branch"
+        
+        # Restore stashed changes if any
+        if [ $had_changes -eq 1 ]; then
+            echo "  Restoring stashed changes..."
+            git stash pop || {
+                echo "  Warning: Could not auto-restore stash (may have conflicts)"
+                echo "  Use 'git stash pop' manually to restore"
+            }
+        fi
+        
         cd "$base_dir"
     done
     
