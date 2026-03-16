@@ -1039,6 +1039,10 @@ pullall() {
         done
     fi
     
+    # Ask for branch to pull
+    echo ""
+    read -p "Branch to pull (default: main/master auto-detect): " target_branch
+    
     echo ""
     
     for repo in "${selected_repos[@]}"; do
@@ -1059,16 +1063,28 @@ pullall() {
             had_changes=1
         fi
         
-        # Checkout main (try main first, then master)
+        # Determine branch to pull
         local main_branch=""
-        if git show-ref --verify --quiet refs/heads/main; then
-            main_branch="main"
-        elif git show-ref --verify --quiet refs/heads/master; then
-            main_branch="master"
+        if [ -n "$target_branch" ]; then
+            # User specified a branch - verify it exists
+            if git show-ref --verify --quiet "refs/heads/$target_branch"; then
+                main_branch="$target_branch"
+            else
+                echo "  Error: Branch '$target_branch' not found - skipping"
+                cd "$base_dir"
+                continue
+            fi
         else
-            echo "  Error: No main or master branch found - skipping"
-            cd "$base_dir"
-            continue
+            # Auto-detect main/master
+            if git show-ref --verify --quiet refs/heads/main; then
+                main_branch="main"
+            elif git show-ref --verify --quiet refs/heads/master; then
+                main_branch="master"
+            else
+                echo "  Error: No main or master branch found - skipping"
+                cd "$base_dir"
+                continue
+            fi
         fi
         
         local current_branch=$(git symbolic-ref --short HEAD 2>/dev/null)
