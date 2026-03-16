@@ -1127,3 +1127,60 @@ pullall() {
     echo "Done!"
 }
 
+lsrepos() {
+    # @desc List all git repos in current directory with their current branch
+    # Usage:
+    #   lsrepos           # Show repos and branches
+    #   lsrepos -s        # Also show status (clean/dirty)
+    
+    local base_dir="$(pwd)"
+    local show_status=0
+    
+    if [ "$1" = "-s" ] || [ "$1" = "--status" ]; then
+        show_status=1
+    fi
+    
+    echo "Git repositories in $(basename "$base_dir"):"
+    echo "=============================================="
+    
+    local index=1
+    local found=0
+    
+    for dir in "$base_dir"/*/; do
+        if [ -d "${dir}.git" ]; then
+            found=1
+            local repo_name="$(basename "$dir")"
+            
+            cd "$dir" || continue
+            
+            # Get current branch
+            local branch=$(git symbolic-ref --short HEAD 2>/dev/null)
+            if [ -z "$branch" ]; then
+                branch="(detached HEAD)"
+            fi
+            
+            # Check for changes if -s flag
+            local status_indicator=""
+            if [ $show_status -eq 1 ]; then
+                if ! git diff-index --quiet HEAD -- 2>/dev/null || [ -n "$(git status --porcelain 2>/dev/null)" ]; then
+                    status_indicator=" [dirty]"
+                else
+                    status_indicator=" [clean]"
+                fi
+            fi
+            
+            printf "%2d) %-30s %s%s\n" "$index" "$repo_name" "$branch" "$status_indicator"
+            ((index++))
+            
+            cd "$base_dir"
+        fi
+    done
+    
+    if [ $found -eq 0 ]; then
+        echo "No git repositories found in current directory"
+        return 1
+    fi
+    
+    echo "=============================================="
+}
+
