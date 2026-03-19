@@ -1184,3 +1184,170 @@ lsrepos() {
     echo "=============================================="
 }
 
+gcherry() {
+    # @desc Interactively cherry-pick a commit from one branch to another
+    # Usage:
+    #   gcherry           # Interactive selection of source branch, commit, and target
+    
+    local current_branch=$(git symbolic-ref --short HEAD 2>/dev/null)
+    
+    if [ -z "$current_branch" ]; then
+        echo "Error: Not on a branch (detached HEAD)"
+        return 1
+    fi
+    
+    echo "Current branch: $current_branch"
+    echo ""
+    
+    # Step 1: Select source branch
+    echo "Select source branch (branch to cherry-pick FROM):"
+    echo "===================================================="
+    
+    local branches=$(git branch --format='%(refname:short)')
+    local index=1
+    declare -a branch_array
+    
+    while IFS= read -r branch; do
+        printf "%2d) %s\n" "$index" "$branch"
+        branch_array+=("$branch")
+        ((index++))
+    done <<< "$branches"
+    
+    echo ""
+    read -p "Select source branch number: " source_num
+    
+    if ! [[ "$source_num" =~ ^[0-9]+$ ]] || [ "$source_num" -lt 1 ] || [ "$source_num" -gt "${#branch_array[@]}" ]; then
+        echo "Error: Invalid selection"
+        return 1
+    fi
+    
+    local source_branch="${branch_array[$((source_num - 1))]}"
+    echo ""
+    echo "Selected source branch: $source_branch"
+    echo ""
+    
+    # Step 2: Select commit from source branch
+    echo "Last 20 commits on '$source_branch':"
+    echo "===================================================="
+    
+    local commits=$(git log "$source_branch" --oneline -n 20)
+    
+    if [ -z "$commits" ]; then
+        echo "No commits found on branch '$source_branch'"
+        return 1
+    fi
+    
+    index=1
+    declare -a commit_array
+    
+    while IFS= read -r line; do
+        local hash=$(echo "$line" | awk '{print $1}')
+        local message=$(echo "$line" | cut -d' ' -f2-)
+        printf "%2d) %s %s\n" "$index" "$hash" "$message"
+        commit_array+=("$hash")
+        ((index++))
+    done <<< "$commits"
+    
+    echo ""
+    read -p "Select commit number to cherry-pick: " commit_num
+    
+    if ! [[ "$commit_num" =~ ^[0-9]+$ ]] || [ "$commit_num" -lt 1 ] || [ "$commit_num" -gt "${#commit_array[@]}" ]; then
+        echo "Error: Invalid selection"
+        return 1
+    fi
+    
+    local selected_commit="${commit_array[$((commit_num - 1))]}"
+    echo ""
+    echo "Selected commit: $selected_commit"
+    git log --oneline -n 1 "$selected_commit"
+    echo ""
+    
+    # Step 3: Select target branch or create new
+    echo "Select target branch (branch to cherry-pick INTO):"
+    echo "===================================================="
+    
+    index=1
+    declare -a target_array
+    
+    while IFS= read -r branch; do
+        printf "%2d) %s\n" "$index" "$branch"
+        target_array+=("$branch")
+        ((index++))
+    done <<< "$branches"
+    
+    printf "%2d) [Create new branch]\n" "$index"
+    
+    echo ""
+    read -p "Select target branch number: " target_num
+    
+    if ! [[ "$target_num" =~ ^[0-9]+$ ]] || [ "$target_num" -lt 1 ] || [ "$target_num" -gt "$index" ]; then
+        echo "Error: Invalid selection"
+        return 1
+    fi
+    
+    local target_branch=""
+    
+    if [ "$target_num" -eq "$index" ]; then
+        # Create new branch
+        read -p "Enter new branch name: " new_branch_name
+        if [ -z "$new_branch_name" ]; then
+            echo "Error: Branch name cannot be empty"
+            return 1
+        fi
+        
+        # Check if branch already exists
+        if git show-ref --verify --quiet "refs/heads/$new_branch_name"; then
+            echo "Error: Branch '$new_branch_name' already exists"
+            return 1
+        fi
+        
+        target_branch="$new_branch_name"
+        
+        echo ""
+        echo "Creating new branch '$target_branch' from current branch..."
+        git checkout -b "$target_branch" || {
+            echo "Error: Failed to create branch"
+            return 1
+        }
+    else
+        target_branch="${target_array[$((target_num - 1))]}"
+        
+        if [ "$target_branch" = "$source_branch" ]; then
+            echo "Warning: Source and target branches are the same"
+            read -p "Continue anyway? (y/n): " continue_same
+            if [[ ! "$continue_same" =~ ^[Yy]$ ]]; then
+                echo "Cancelled"
+                return 0
+            fi
+        fi
+        
+        echo ""
+        echo "Checking out '$target_branch'..."
+        git checkout "$target_branch" || {
+            echo "Error: Failed to checkout branch"
+            return 1
+        }
+    fi
+    
+    # Step 4: Cherry-pick the commit
+    echo ""
+    echo "Cherry-picking commit $selected_commit into '$target_branch'..."
+    
+    if git cherry-pick "$selected_commit"; then
+        echo ""
+        echo "✓ Successfully cherry-picked commit $selected_commit into '$target_branch'"
+        echo ""
+        read -p "Push changes to origin? (y/n): " push_changes
+        if [[ "$push_changes" =~ ^[Yy]$ ]]; then
+            git push origin "$target_branch" || git push -u origin "$target_branch"
+            echo "✓ Pushed to origin/$target_branch"
+        fi
+    else
+        echo ""
+        echo "Error: Cherry-pick failed. Resolve conflicts and run:"
+        echo "  git cherry-pick --continue"
+        echo "Or abort the cherry-pick with:"
+        echo "  git cherry-pick --abort"
+        return 1
+    fi
+}
