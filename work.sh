@@ -495,3 +495,8 @@ clonebiometrie() {
     echo "=============================================="
     echo "Done! Cloned: $success, Skipped/Failed: $failed"
 }
+# Open current directory in PowerShell
+# Usage: powershell
+powershell() {
+    powershell.exe -NoExit -Command "Set-Location '$(pwd)'"
+}
