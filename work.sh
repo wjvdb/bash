@@ -1,4 +1,12 @@
-alias devportal="cd /c/dev/"
+devportal() {
+    local base_dir="/c/dev"
+
+    if [ -n "$1" ]; then
+        cd "$base_dir/$1"
+    else
+        cd "$base_dir"
+    fi
+}
 
 # ===============================
 # Git Migration Clone Function
