@@ -49,6 +49,11 @@ function gnb() {
   git checkout -b "$1" && git push -u origin "$1"
 }
 
+function gbl() {
+    # @desc List local branches, newest commits first
+    git branch --sort=-committerdate --format='%(refname:short)'
+}
+
 
 
 glf() {
@@ -1351,3 +1356,4 @@ gcherry() {
         return 1
     fi
 }
+
