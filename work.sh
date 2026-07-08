@@ -513,19 +513,18 @@ powershell() {
 
 
 sum_builds() {
-    grep -E 'succeeded.*, failed.*, skipped' "$1" |
     awk '
     {
-        if (match($0, /([0-9]+) succeeded, ([0-9]+) failed, ([0-9]+) skipped/, m)) {
-            succeeded += m[1]
-            failed    += m[2]
-            skipped   += m[3]
+        for (i = 1; i <= NF; i++) {
+            if ($(i+1) == "succeeded,") s += $i
+            if ($(i+1) == "failed,")    f += $i
+            if ($(i+1) == "skipped")    k += $i
         }
     }
     END {
-        printf "Succeeded: %d\n", succeeded
-        printf "Failed:    %d\n", failed
-        printf "Skipped:   %d\n", skipped
-        printf "Total:     %d\n", succeeded + failed + skipped
-    }'
+        printf "Succeeded: %d\n", s
+        printf "Failed:    %d\n", f
+        printf "Skipped:   %d\n", k
+        printf "Total:     %d\n", s + f + k
+    }' "$1"
 }
