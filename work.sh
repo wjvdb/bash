@@ -513,18 +513,17 @@ powershell() {
 
 
 sum_builds() {
+    iconv -f UTF-16LE -t UTF-8 "$1" |
     awk '
-    {
-        for (i = 1; i <= NF; i++) {
-            if ($(i+1) == "succeeded,") s += $i
-            if ($(i+1) == "failed,")    f += $i
-            if ($(i+1) == "skipped")    k += $i
-        }
+    /succeeded, .* failed, .* skipped/ {
+        s += $4
+        f += $6
+        k += $8
     }
     END {
         printf "Succeeded: %d\n", s
         printf "Failed:    %d\n", f
         printf "Skipped:   %d\n", k
         printf "Total:     %d\n", s + f + k
-    }' "$1"
+    }'
 }
