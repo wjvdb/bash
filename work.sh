@@ -1,3 +1,5 @@
+unalias devportal 2>/dev/null
+
 devportal() {
     local base_dir="/c/dev"
 
@@ -507,4 +509,23 @@ clonebiometrie() {
 # Usage: powershell
 powershell() {
     powershell.exe -NoExit -Command "Set-Location '$(pwd)'"
+}
+
+
+sum_builds() {
+    grep -E 'succeeded.*, failed.*, skipped' "$1" |
+    awk '
+    {
+        if (match($0, /([0-9]+) succeeded, ([0-9]+) failed, ([0-9]+) skipped/, m)) {
+            succeeded += m[1]
+            failed    += m[2]
+            skipped   += m[3]
+        }
+    }
+    END {
+        printf "Succeeded: %d\n", succeeded
+        printf "Failed:    %d\n", failed
+        printf "Skipped:   %d\n", skipped
+        printf "Total:     %d\n", succeeded + failed + skipped
+    }'
 }
