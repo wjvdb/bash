@@ -252,6 +252,66 @@ function pp {
   done 
 }
 
+#!/bin/bash
+
+# Function to navigate up the directory tree until the parent directory
+# matches the target name.
+# Usage: go_up_to_folder <target_folder_name>
+function qq() {
+    local target_name="$1"
+    local current_dir="$PWD"
+    local parent_dir
+
+    if [[ -z "$target_name" ]]; then
+        echo "Usage: go_up_to_folder <target_folder_name>"
+        return 1
+    fi
+
+    # Check if the target name is a valid directory name
+    if [[ ! "$target_name" =~ ^[a-zA-Z0-9_-]+$ ]]; then
+        echo "Error: Invalid folder name format provided."
+        return 1
+    fi
+
+    # Store the initial directory to allow returning to it if needed
+    # (Though for this function, we just change directory)
+    initial_dir=$(pwd)
+
+    # Loop indefinitely until a break condition is met
+    while true; do
+        # 1. Check if we are already at the root directory
+        if [[ "$current_dir" == "/" ]]; then
+            echo "Cannot go up further. Already at the root directory."
+            return 1
+        fi
+
+        # 2. Get the parent directory path
+        parent_dir=$(dirname "$current_dir")
+        
+        # 3. Get the name of the immediate parent directory
+        # This extracts the last component of the parent path
+        parent_name=$(basename "$parent_dir")
+
+        # 4. Check if the parent name matches the target name
+        if [[ "$parent_name" == "$target_name" ]]; then
+            echo "Successfully moved to the directory named '$target_name'."
+            cd "$parent_dir"
+            return 0 # Success
+        fi
+
+        # 5. If no match, move up one level and continue the loop
+        echo "Moving up from '$current_dir' (Parent: '$parent_name')..."
+        current_dir="$parent_dir"
+        
+        # Check if we've looped back to the root before the target was found
+        if [[ "$parent_dir" == "/" ]] && [[ "$current_dir" != "/" ]]; then
+             echo "Reached root directory ('/') without finding '$target_name'."
+             return 1
+        fi
+
+    done
+}
+
 replace_in_files() { 
   # @desc Replace text in files by extension (usage: replace_in_files old new js)
   if [ $# -ne 2 ]; then 
