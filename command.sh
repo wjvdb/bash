@@ -256,20 +256,20 @@ function pp {
 
 # Function to navigate up the directory tree until the parent directory
 # matches the target name.
-# Usage: go_up_to_folder <target_folder_name>
+# Usage: qq <target_folder_name>
 function qq() {
     local target_name="$1"
     local current_dir="$PWD"
     local parent_dir
 
     if [[ -z "$target_name" ]]; then
-        echo "Usage: go_up_to_folder <target_folder_name>"
+        echo "Usage: qq <target_folder_name>"
         return 1
     fi
 
     # Check if the target name is a valid directory name
     if [[ ! "$target_name" =~ ^[a-zA-Z0-9_-]+$ ]]; then
-        echo "Error: Invalid folder name format provided."
+        echo "you can't do that"
         return 1
     fi
 
@@ -281,7 +281,7 @@ function qq() {
     while true; do
         # 1. Check if we are already at the root directory
         if [[ "$current_dir" == "/" ]]; then
-            echo "Cannot go up further. Already at the root directory."
+            echo "you can't do that"
             return 1
         fi
 
@@ -292,20 +292,18 @@ function qq() {
         # This extracts the last component of the parent path
         parent_name=$(basename "$parent_dir")
 
-        # 4. Check if the parent name matches the target name
-        if [[ "$parent_name" == "$target_name" ]]; then
-            echo "Successfully moved to the directory named '$target_name'."
+        # 4. Check if the parent name matches the target name (case-insensitive)
+        if [[ "${parent_name,,}" == "${target_name,,}" ]]; then
             cd "$parent_dir"
-            return 0 # Success
+            return 0
         fi
 
         # 5. If no match, move up one level and continue the loop
-        echo "Moving up from '$current_dir' (Parent: '$parent_name')..."
         current_dir="$parent_dir"
         
         # Check if we've looped back to the root before the target was found
         if [[ "$parent_dir" == "/" ]] && [[ "$current_dir" != "/" ]]; then
-             echo "Reached root directory ('/') without finding '$target_name'."
+             echo "this '$target_name' does not exist..."
              return 1
         fi
 
