@@ -12,16 +12,13 @@ tollama() {
     cmd=$(ollama run qwen2.5-coder:7b "
 You are a bash assistant.
 
-Return either:
-- a bash command
-- file contents
+return raw bash code only, without any explanations or comments. Do not include any markdown formatting. Do not include any text outside of the code block. Do not include any code fences. Do not include any additional text or instructions.
 
-No markdown.
-No code fences.
 
 Task:
 $prompt
 ")
+cmd=$(printf '%s\n' "$cmd" | sed '/^```.*$/d')
 
     echo
     echo "Generated:"
@@ -57,4 +54,37 @@ $prompt
             echo "Cancelled"
             ;;
     esac
+}
+
+toll() {
+    local prompt
+    local cmd
+
+    if [[ $# -eq 0 ]]; then
+        read -e -p "Prompt: " prompt
+    else
+        prompt="$*"
+    fi
+
+    cmd=$(ollama run qwen2.5-coder:7b "
+You are a bash assistant.
+
+return raw bash code only, without any explanations or comments. Do not include any markdown formatting. Do not include any text outside of the code block. Do not include any code fences. Do not include any additional text or instructions.
+
+Task:
+$prompt
+")
+
+    cmd=$(printf '%s\n' "$cmd" | sed '/^```.*$/d')
+
+    echo
+    echo "Executing:"
+    echo "$cmd"
+    echo "----------------------------------------"
+
+    if [[ "$cmd" =~ ^cd[[:space:]] ]]; then
+        eval "$cmd"
+    else
+        bash -c "$cmd"
+    fi
 }
