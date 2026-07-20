@@ -10,7 +10,7 @@ tollama() {
 
     case "$action" in
         search)
-            ollama run qwen3 "
+            ollama run qwen2.5-coder:7b "
 You are a terminal assistant.
 
 Return ONLY a shell command.
