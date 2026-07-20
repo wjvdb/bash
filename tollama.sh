@@ -1,7 +1,13 @@
 #!/bin/bash
-
 tollama() {
+    local prompt
     local cmd
+
+    if [[ $# -eq 0 ]]; then
+        read -e -p "Prompt: " prompt
+    else
+        prompt="$*"
+    fi
 
     cmd=$(ollama run qwen2.5-coder:7b "
 You are a shell command generator.
@@ -13,7 +19,7 @@ Rules:
 - No code fences.
 
 Task:
-$*
+$prompt
 ")
 
     cmd=$(echo "$cmd" | sed '/^```/d')
