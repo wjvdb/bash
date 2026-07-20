@@ -4,17 +4,31 @@
 tollama() {
     local cmd
 
-    cmd=$( ollama run qwen2.5-coder:7b "
-Return only a bash command.
+    cmd=$(ollama run qwen2.5-coder:7b "
+You are a shell command generator.
+
+Rules:
+- Return exactly one bash command.
+- No markdown.
+- No explanations.
 
 Task:
 $*
 ")
 
-    echo "Command:"
-    echo "$cmd"
+    cmd=$(echo "$cmd" | sed '/^```/d')
+
+    echo
+    echo "Generated:"
+    printf '[%s]\n' "$cmd"
+    echo
 
     read -p "Execute? [y/N] " yn
 
-    [[ "$yn" =~ ^[Yy]$ ]] && eval "$cmd"
+    if [[ "$yn" =~ ^[Yy]$ ]]; then
+        echo "Executing..."
+        eval "$cmd"
+        echo "Exit code: $?"
+        pwd
+    fi
 }
