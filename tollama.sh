@@ -10,32 +10,51 @@ tollama() {
     fi
 
     cmd=$(ollama run qwen2.5-coder:7b "
-You are a shell command generator.
+You are a bash assistant.
 
-Rules:
-- Return exactly one bash command.
-- No markdown.
-- No explanations.
-- No code fences.
+Return either:
+- a bash command
+- file contents
+
+No markdown.
+No code fences.
 
 Task:
 $prompt
 ")
 
-    cmd=$(echo "$cmd" | sed '/^```/d')
-
     echo
     echo "Generated:"
+    echo "----------------------------------------"
     echo "$cmd"
+    echo "----------------------------------------"
     echo
 
-    read -p "Execute? [y/N] " yn
+    read -p "[y] Execute [f] Save as file [a] Append to file [n] Cancel: " choice
 
-    [[ ! "$yn" =~ ^[Yy]$ ]] && return
+    case "$choice" in
+        y|Y)
+            if [[ "$cmd" =~ ^cd[[:space:]] ]]; then
+                eval "$cmd"
+            else
+                bash -c "$cmd"
+            fi
+            ;;
 
-    if [[ "$cmd" =~ ^cd[[:space:]] ]]; then
-        eval "$cmd"
-    else
-        bash -c "$cmd"
-    fi
+        f|F)
+            read -e -p "Filename: " filename
+            printf '%s\n' "$cmd" > "$filename"
+            echo "Saved to $filename"
+            ;;
+
+        a|A)
+            read -e -p "Append to file: " filename
+            printf '%s\n' "$cmd" >> "$filename"
+            echo "Appended to $filename"
+            ;;
+
+        *)
+            echo "Cancelled"
+            ;;
+    esac
 }
