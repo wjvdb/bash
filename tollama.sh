@@ -1,39 +1,20 @@
 #!/bin/bash
 
-# Add your custom bash functions and aliases here
 
 tollama() {
-    local action="$1"
-    shift
+    local cmd
 
-    local prompt="$*"
-
-    case "$action" in
-        search)
-            ollama run qwen2.5-coder:7b "
-You are a terminal assistant.
-
-Return ONLY a shell command.
+    cmd=$( ollama run qwen2.5-coder:7b "
+Return only a bash command.
 
 Task:
-$prompt
-"
-            ;;
+$*
+")
 
-        make)
-            ollama run qwen3 "
-You are a terminal assistant.
+    echo "Command:"
+    echo "$cmd"
 
-Create files using shell commands.
+    read -p "Execute? [y/N] " yn
 
-Return ONLY executable bash.
-Task:
-$prompt
-"
-            ;;
-
-        *)
-            echo "Usage: tollama {search|make} <prompt>"
-            ;;
-    esac
+    [[ "$yn" =~ ^[Yy]$ ]] && eval "$cmd"
 }
