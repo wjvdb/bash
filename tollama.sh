@@ -1,6 +1,5 @@
 #!/bin/bash
 
-
 tollama() {
     local cmd
 
@@ -11,6 +10,7 @@ Rules:
 - Return exactly one bash command.
 - No markdown.
 - No explanations.
+- No code fences.
 
 Task:
 $*
@@ -20,15 +20,16 @@ $*
 
     echo
     echo "Generated:"
-    printf '[%s]\n' "$cmd"
+    echo "$cmd"
     echo
 
     read -p "Execute? [y/N] " yn
 
-    if [[ "$yn" =~ ^[Yy]$ ]]; then
-        echo "Executing..."
+    [[ ! "$yn" =~ ^[Yy]$ ]] && return
+
+    if [[ "$cmd" =~ ^cd[[:space:]] ]]; then
         eval "$cmd"
-        echo "Exit code: $?"
-        pwd
+    else
+        bash -c "$cmd"
     fi
 }
