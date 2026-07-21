@@ -45,6 +45,7 @@ function exc() {
   done
   echo "B: Edit .bashrc"
   echo "N: Create new file"
+  echo "M: move to scripts folder"
   echo ""
   
   read -p "Enter the number of the file to edit (or 'B' for bashrc, 'N' for new): " choice
@@ -89,7 +90,16 @@ EOF
     selected_file="$new_file_path"
     local file_name="$new_file_name"
     local is_new_file=true
-    
+    # Handle moving to script directory
+  elif [[ "$choice" =~ ^[Mm]$ ]]; then
+    cd "$script_dir" || {
+      echo "Failed to change directory to $script_dir"
+      return 1
+    }
+
+    echo "✓ Moved to: $(pwd)"
+    return 0
+
   elif [[ $choice =~ ^[0-9]+$ ]] && (( choice > 0 && choice <= ${#sourced_files[@]} )); then
     selected_file="${sourced_files[$((choice-1))]}"
     local file_name="$(basename "$selected_file")"
