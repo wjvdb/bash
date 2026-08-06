@@ -9,7 +9,7 @@ tollama() {
         prompt="$*"
     fi
 
-    cmd=$(ollama run qwen2.5-coder:7b "
+    cmd=$(ollama run ornith:9b "
 You are a bash assistant.
 
 return raw bash code only, without any explanations or comments. Do not include any markdown formatting. Do not include any text outside of the code block. Do not include any code fences. Do not include any additional text or instructions.
@@ -18,8 +18,9 @@ return raw bash code only, without any explanations or comments. Do not include 
 Task:
 $prompt
 ")
-cmd=$(printf '%s\n' "$cmd" | sed '/^```.*$/d')
+cmd=$(sed '/^```/d' <<< "$cmd")
 
+cmd=$(awk '/^\.\.\.done thinking\./ {found=1; next} found' <<< "$cmd")
     echo
     echo "Generated:"
     echo "----------------------------------------"
@@ -66,7 +67,7 @@ toll() {
         prompt="$*"
     fi
 
-    cmd=$(ollama run qwen2.5-coder:7b "
+    cmd=$(ollama run ornith:9b "
 You are a bash assistant.
 
 return raw bash code only, without any explanations or comments. Do not include any markdown formatting. Do not include any text outside of the code block. Do not include any code fences. Do not include any additional text or instructions.
@@ -74,9 +75,8 @@ return raw bash code only, without any explanations or comments. Do not include 
 Task:
 $prompt
 ")
-
-    cmd=$(printf '%s\n' "$cmd" | sed '/^```.*$/d')
-
+cmd=$(sed '/^```/d' <<< "$cmd")
+cmd=$(awk '/^\.\.\.done thinking\./ {found=1; next} found' <<< "$cmd")
     echo
     echo "Executing:"
     echo "$cmd"
