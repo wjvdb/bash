@@ -27,38 +27,36 @@ function gach() {
 
 gitundo() {
     echo
-    echo "=== Last 10 reflog entries ==="
-    git reflog -10
+    echo "=== Last 10 commits ==="
+    git log --oneline -10
     echo
 
-    read -rp "Undo how many commits? (0 to cancel): " count
+    read -rp "How many commits should be removed from the tip? (0 to cancel): " count
 
     if ! [[ "$count" =~ ^[0-9]+$ ]]; then
         echo "Invalid number."
         return 1
     fi
 
-    if [ "$count" -eq 0 ]; then
+    [ "$count" -eq 0 ] && {
         echo "Cancelled."
         return 0
-    fi
-
-    target="HEAD@{$count}"
+    }
 
     echo
-    echo "Resetting to $target..."
-    git reset --hard "$target" || return 1
+    echo "Will reset branch to HEAD~$count"
+    git reset --hard "HEAD~$count" || return 1
 
     echo
-    echo "=== Updated reflog ==="
-    git reflog -10
+    echo "=== New branch history ==="
+    git log --oneline -10
     echo
 
     current_branch=$(git branch --show-current)
 
-    read -rp "Force push '$current_branch' to origin? [y/N]: " push_answer
+    read -rp "Force-push '$current_branch'? [y/N]: " answer
 
-    case "$push_answer" in
+    case "$answer" in
         [yY]|[yY][eE][sS])
             git push --force-with-lease origin "$current_branch"
             ;;
