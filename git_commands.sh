@@ -25,6 +25,49 @@ function gach() {
   fi
 }
 
+gitundo() {
+    echo
+    echo "=== Last 10 reflog entries ==="
+    git reflog -10
+    echo
+
+    read -rp "Undo how many commits? (0 to cancel): " count
+
+    if ! [[ "$count" =~ ^[0-9]+$ ]]; then
+        echo "Invalid number."
+        return 1
+    fi
+
+    if [ "$count" -eq 0 ]; then
+        echo "Cancelled."
+        return 0
+    fi
+
+    target="HEAD@{$count}"
+
+    echo
+    echo "Resetting to $target..."
+    git reset --hard "$target" || return 1
+
+    echo
+    echo "=== Updated reflog ==="
+    git reflog -10
+    echo
+
+    current_branch=$(git branch --show-current)
+
+    read -rp "Force push '$current_branch' to origin? [y/N]: " push_answer
+
+    case "$push_answer" in
+        [yY]|[yY][eE][sS])
+            git push --force-with-lease origin "$current_branch"
+            ;;
+        *)
+            echo "Not pushed."
+            ;;
+    esac
+}
+
 
 function unfuck() {
   # @desc Reset current branch to match remote and optionally delete untracked files
