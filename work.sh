@@ -591,3 +591,51 @@ ccf() {
         sort -k4 -nr
     }
 }
+
+ccfu() {
+    local max_commits min_files
+
+    read -rp "Maximum commits for low-touch files: " max_commits
+    read -rp "Minimum files per folder [0]: " min_files
+
+    min_files=${min_files:-0}
+
+    git ls-files |
+    while IFS= read -r file; do
+        commits=$(git rev-list --count HEAD -- "$filedev/null)
+        folder=$(dirname "$file")
+
+        echo "$folder|$commits"
+    done |
+    awk -F'|' -v max="$max_commits" -v min_files="$min_files" '
+    {
+        total[$1]++
+        commitsum[$1]+=$2
+
+        if ($2 <= max)
+            low[$1]++
+
+        if (length($1) > maxlen)
+            maxlen = length($1)
+    }
+    END {
+        print "Folder\tFiles\tLow\tLow%\tAvgCommits"
+
+        for (f in total) {
+            if (total[f] < min_files)
+                continue
+
+            pct = (low[f] * 100) / total[f]
+            avg = commitsum[f] / total[f]
+
+            printf "%s\t%d\t%d\t%.1f%%\t%.1f\n",
+                   f, total[f], low[f], pct, avg
+        }
+    }' |
+    {
+        read -r header
+        echo "$header"
+        sort -t $'\t' -k4 -nr
+    } |
+    column -t -s $'\t'
+}
