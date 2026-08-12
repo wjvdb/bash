@@ -527,3 +527,22 @@ sum_builds() {
         printf "Total:     %d\n", s + f + k
     }'
 }
+
+guff() {
+    local pattern max_commits
+
+    read -rp "File pattern (e.g. *.cs, *.json, *.java): " pattern
+    read -rp "Maximum commit count (0 = never committed after introduction): " max_commits
+
+    echo
+    echo "Scanning files matching '$pattern'..."
+    echo
+
+    git ls-files "$pattern" | while IFS= read -r file; do
+        commits=$(git log --follow --oneline -- "$file" 2>/dev/null | wc -l)
+
+        if [ "$commits" -le "$max_commits" ]; then
+            printf "%5d  %s\n" "$commits" "$file"
+        fi
+    done | sort -n
+}
