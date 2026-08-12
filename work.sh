@@ -550,43 +550,44 @@ guff() {
 ccf() {
     local pattern max_commits
 
-    read -rp "File pattern (e.g. *.cs): " pattern
+    read -rp "File pattern (e.g. *.cpp): " pattern
     read -rp "Maximum commits for low-touch files: " max_commits
 
     git ls-files "$pattern" |
     while IFS= read -r file; do
-
         commits=$(git rev-list --count HEAD -- "$file" 2>/dev/null)
-
         folder=$(dirname "$file")
 
         echo "$folder|$commits"
-
     done |
     awk -F'|' -v max="$max_commits" '
     {
         total[$1]++
         commitsum[$1]+=$2
 
-        if($2 <= max)
+        if ($2 <= max)
             low[$1]++
+
+        if (length($1) > maxlen)
+            maxlen = length($1)
     }
     END {
-        printf "%-50s %8s %8s %8s %10s\n",
-               "Folder","Files","Low","Low%","AvgCommits"
+        width = maxlen + 2
 
-        for(f in total) {
+        printf "%-" width "s %8s %8s %8s %12s\n",
+               "Folder", "Files", "Low", "Low%", "AvgCommits"
 
-            pct=(low[f]*100)/total[f]
-            avg=commitsum[f]/total[f]
+        for (f in total) {
+            pct = (low[f] * 100) / total[f]
+            avg = commitsum[f] / total[f]
 
-            printf "%-50s %8d %8d %7.1f%% %10.1f\n",
-                   f,total[f],low[f],pct,avg
+            printf "%-" width "s %8d %8d %7.1f%% %12.1f\n",
+                   f, total[f], low[f], pct, avg
         }
     }' |
-    (
-        read header
+    {
+        read -r header
         echo "$header"
         sort -k4 -nr
-    )
+    }
 }
