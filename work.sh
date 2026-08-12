@@ -592,7 +592,7 @@ ccf() {
     }
 }
 
-git_find_low_touch_folders() {
+ccfu() {
     local max_commits min_files
 
     read -rp "Maximum commits for low-touch files: " max_commits
