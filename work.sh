@@ -592,7 +592,7 @@ ccf() {
     }
 }
 
-ccfu() {
+git_find_low_touch_folders() {
     local max_commits min_files
 
     read -rp "Maximum commits for low-touch files: " max_commits
@@ -602,7 +602,7 @@ ccfu() {
 
     git ls-files |
     while IFS= read -r file; do
-        commits=$(git rev-list --count HEAD -- "$filedev/null)
+        commits=$(git rev-list --count HEAD -- "$file" 2>/dev/null)
         folder=$(dirname "$file")
 
         echo "$folder|$commits"
