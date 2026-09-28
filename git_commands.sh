@@ -25,6 +25,69 @@ function gach() {
   fi
 }
 
+resolve_conflicts() {
+    local conflicts choice
+
+    mapfile -t conflicts < <(git diff --name-only --diff-filter=U)
+
+    if [ ${#conflicts[@]} -eq 0 ]; then
+        echo "No merge conflicts found."
+        return 0
+    fi
+
+    echo "Found ${#conflicts[@]} conflicted file(s)."
+
+    for file in "${conflicts[@]}"; do
+        echo
+        echo "========================================"
+        echo "Conflict: $file"
+        echo "========================================"
+
+        while true; do
+            echo "1) Keep OUR version    ($(git rev-parse --abbrev-ref HEAD))"
+            echo "2) Keep THEIR version  (merged branch)"
+            echo "3) Skip"
+            echo "q) Quit"
+            read -rp "Choice: " choice
+
+            case "$choice" in
+                1)
+                    git checkout --ours -- "$file"
+                    git add "$file"
+                    echo "✓ Kept OUR version"
+                    break
+                    ;;
+                2)
+                    git checkout --theirs -- "$file"
+                    git add "$file"
+                    echo "✓ Kept THEIR version"
+                    break
+                    ;;
+                3)
+                    echo "Skipped"
+                    break
+                    ;;
+                q|Q)
+                    echo "Aborted."
+                    return 1
+                    ;;
+                *)
+                    echo "Invalid choice."
+                    ;;
+            esac
+        done
+    done
+
+    echo
+    echo "Remaining conflicts:"
+    git diff --name-only --diff-filter=U
+
+    if [ -z "$(git diff --name-only --diff-filter=U)" ]; then
+        echo "All conflicts resolved. Commit the merge when ready:"
+        echo "  git commit"
+    fi
+}
+
 gitundo() {
     echo
     echo "=== Last 10 commits ==="
@@ -88,6 +151,19 @@ function gnb() {
   fi
 
   git checkout -b "$1" && git push -u origin "$1"
+}
+
+function garb() {
+    # @desc Push the current branch to origin and set its upstream
+    local current_branch
+    current_branch=$(git branch --show-current)
+
+    if [ -z "$current_branch" ]; then
+        echo "garb: not currently on a branch (detached HEAD)."
+        return 1
+    fi
+
+    git push --set-upstream origin "$current_branch"
 }
 
 function gbl() {
